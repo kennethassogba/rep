@@ -568,7 +568,7 @@ export function buildMachine(): Machine {
       points,
       kind,
       color,
-      endColor: kind === "primary" ? palette.orange : color,
+      endColor: color,
     });
   };
   route(

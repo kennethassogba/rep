@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as T from "three";
-import { buildMachine } from "../src/industrial.ts";
+import { buildMachine, palette } from "../src/industrial.ts";
 import { roots, parts } from "../src/parts.ts";
 import { openSection, pickedSphere } from "../src/section.ts";
 import { Interior } from "../src/interior.ts";
@@ -46,6 +46,17 @@ test("native equipment transport is finite, still when cold, and responds to cir
     machine.interiors.has("pressurizer"),
     false,
     "pressure is imposed; no invented local flow",
+  );
+  const primaryLegs = machine.routes.filter(
+    (route) => route.kind === "primary",
+  );
+  assert.equal(primaryLegs[0].color, palette.orange);
+  assert.ok(
+    primaryLegs.slice(1).every((route) => route.color === palette.blue),
+  );
+  assert.ok(
+    primaryLegs.every((route) => route.endColor === route.color),
+    "heat changes across equipment, not inside unheated pipework",
   );
   const interior = new Interior({
     routes: [...machine.routes, ...[...machine.interiors.values()].flat()],
