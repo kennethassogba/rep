@@ -8,7 +8,9 @@ import { Interior } from "./interior";
 import { openSection, pickedSphere } from "./section";
 import { parts, type Part } from "./parts";
 import { rates, rpm, secondaryT, type State, type Controls } from "./physics";
-import { actionEquipment, type Action } from "./startup";
+import { actionEquipment, controlValue, type Action } from "./startup";
+
+import { wheelDelta, leverValue, controlPose } from "./gestures";
 
 type View = { target: T.Vector3; position: T.Vector3 };
 type Layer = {
@@ -53,6 +55,9 @@ export class MachineScene {
   reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   picked?: { id: string; sphere: T.Sphere };
   onAction: (action: Action) => void = () => {};
+  onAdjust: (action: Action, value: number, finished: boolean) => void =
+    () => {};
+  onControlHint: (action?: Action, x?: number, y?: number) => void = () => {};
   onDrill: (part?: string) => void = () => {};
   onProject: () => void = () => {};
   ray = new T.Raycaster();
@@ -208,11 +213,143 @@ export class MachineScene {
       this.dirty = true;
       this.project();
     });
+    const canvas = this.renderer.domElement;
     let down = [0, 0];
-    this.renderer.domElement.addEventListener("pointerdown", (e) => {
-      down = [e.clientX, e.clientY];
-    });
-    this.renderer.domElement.addEventListener("pointerup", (e) => {
+    let drag:
+      | {
+          action: Action;
+          pointer: number;
+          x: number;
+          y: number;
+          value: number;
+          current: number;
+          angle: number;
+          cx: number;
+          cy: number;
+          wheel: boolean;
+          moved: boolean;
+        }
+      | undefined;
+    const hint = (action?: Action) => {
+      if (!action) {
+        this.onControlHint();
+        return;
+      }
+      const handle = this.machine.actuators.find(
+        (o) => o.userData.actuator === action,
+      )!;
+      const point = handle
+        .getWorldPosition(new T.Vector3())
+        .project(this.camera);
+      const rect = canvas.getBoundingClientRect();
+      this.onControlHint(
+        action,
+        rect.left + ((point.x + 1) * rect.width) / 2,
+        rect.top + ((1 - point.y) * rect.height) / 2,
+      );
+    };
+    // Capture before OrbitControls: manipulating a handle must not orbit the camera.
+    canvas.addEventListener(
+      "pointerdown",
+      (e) => {
+        down = [e.clientX, e.clientY];
+        if (e.button !== 0 || drag || this.flight || this.journey) return;
+        const hit = this.pick(e.clientX, e.clientY);
+        if (!hit?.action || !this.lastControls) return;
+        const handle = this.machine.actuators.find(
+          (o) => o.userData.actuator === hit.action,
+        )!;
+        const p = handle.getWorldPosition(new T.Vector3()).project(this.camera);
+        const rect = canvas.getBoundingClientRect();
+        const cx = rect.left + ((p.x + 1) * rect.width) / 2,
+          cy = rect.top + ((1 - p.y) * rect.height) / 2;
+        const value = controlValue(hit.action, this.lastControls);
+        drag = {
+          action: hit.action,
+          pointer: e.pointerId,
+          x: e.clientX,
+          y: e.clientY,
+          value,
+          current: value,
+          angle: Math.atan2(e.clientY - cy, e.clientX - cx),
+          cx,
+          cy,
+          wheel:
+            handle.userData.controlKind === "wheel" &&
+            Math.hypot(e.clientX - cx, e.clientY - cy) > 5,
+          moved: false,
+        };
+        this.orbit.enabled = false;
+        canvas.setPointerCapture(e.pointerId);
+        canvas.style.cursor = "grabbing";
+        this.highlight(handle);
+        hint(hit.action);
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      },
+      true,
+    );
+    canvas.addEventListener(
+      "pointermove",
+      (e) => {
+        if (drag && drag.pointer === e.pointerId) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5)
+            drag.moved = true;
+          if (drag.moved) {
+            if (drag.wheel) {
+              const angle = Math.atan2(
+                e.clientY - drag.cy,
+                e.clientX - drag.cx,
+              );
+              drag.current = T.MathUtils.clamp(
+                drag.current + wheelDelta(drag.angle, angle),
+                0,
+                1,
+              );
+              drag.angle = angle;
+            } else drag.current = leverValue(drag.value, drag.y, e.clientY);
+            this.onAdjust(drag.action, drag.current, false);
+            hint(drag.action);
+          }
+          return;
+        }
+        if (e.buttons || this.flight || this.journey) return;
+        const hit = this.pick(e.clientX, e.clientY);
+        this.highlight(
+          hit?.action
+            ? this.machine.actuators.find(
+                (o) => o.userData.actuator === hit.action,
+              )
+            : hit?.object,
+        );
+        hint(hit?.action);
+        canvas.style.cursor = hit?.action
+          ? "grab"
+          : hit?.id
+            ? "zoom-in"
+            : "grab";
+      },
+      true,
+    );
+    const end = (e: PointerEvent) => {
+      if (!drag || drag.pointer !== e.pointerId) return;
+      e.stopImmediatePropagation();
+      const d = drag;
+      drag = undefined;
+      this.orbit.enabled = true;
+      if (canvas.hasPointerCapture(e.pointerId))
+        canvas.releasePointerCapture(e.pointerId);
+      canvas.style.cursor = "grab";
+      if (d.moved) this.onAdjust(d.action, d.current, true);
+      else if (e.type === "pointerup") this.onAction(d.action);
+      hint(d.action);
+    };
+    canvas.addEventListener("pointerup", end, true);
+    canvas.addEventListener("pointercancel", end, true);
+    canvas.addEventListener("lostpointercapture", end, true);
+    canvas.addEventListener("pointerup", (e) => {
       if (
         this.journey ||
         this.flight ||
@@ -220,12 +357,7 @@ export class MachineScene {
       )
         return;
       const hit = this.pick(e.clientX, e.clientY);
-      if (!hit) return;
-      if (hit.action) {
-        this.onAction(hit.action);
-        return;
-      }
-      if (hit.id) {
+      if (hit?.id) {
         this.picked = {
           id: hit.id,
           sphere: pickedSphere(hit.object, hit.instanceId),
@@ -233,19 +365,12 @@ export class MachineScene {
         this.onDrill(hit.id);
       }
     });
-    this.renderer.domElement.addEventListener("pointermove", (e) => {
-      if (e.buttons || this.flight || this.journey) return;
-      const hit = this.pick(e.clientX, e.clientY);
-      this.highlight(hit?.object);
-      this.renderer.domElement.style.cursor = hit?.action
-        ? "pointer"
-        : hit?.id
-          ? "zoom-in"
-          : "grab";
+    canvas.addEventListener("pointerleave", () => {
+      if (!drag) {
+        this.highlight();
+        hint();
+      }
     });
-    this.renderer.domElement.addEventListener("pointerleave", () =>
-      this.highlight(),
-    );
     new ResizeObserver(() => this.resize()).observe(host);
     matchMedia("(prefers-reduced-motion: reduce)").addEventListener(
       "change",
@@ -308,7 +433,9 @@ export class MachineScene {
   }
   focusAction(action?: Action) {
     this.highlight(
-      action ? this.machine.equipment.get(actionEquipment[action]) : undefined,
+      action
+        ? this.machine.actuators.find((o) => o.userData.actuator === action)
+        : undefined,
     );
   }
   private capture(): View {
@@ -570,21 +697,12 @@ export class MachineScene {
         );
   }
   syncControls(c: Controls) {
+    this.lastControls = c;
     for (const lever of this.machine.actuators) {
-      const a = lever.userData.actuator as Action;
-      const v =
-        a === "cooling"
-          ? c.cooling
-          : a === "primary"
-            ? c.primary
-            : a === "heat"
-              ? c.power
-              : a === "steam"
-                ? c.valve
-                : c.generator
-                  ? 1
-                  : 0;
-      lever.rotation.z = v > 0 ? 0.5 : -0.45;
+      lever.rotation.z = controlPose(
+        lever.userData.controlKind,
+        controlValue(lever.userData.actuator as Action, c),
+      );
     }
     this.dirty = true;
   }
@@ -1013,23 +1131,9 @@ export class MachineScene {
           );
       }
       for (const lever of this.machine.actuators) {
-        const action = lever.userData.actuator as Action;
-        const value =
-          action === "cooling"
-            ? c.cooling
-            : action === "primary"
-              ? c.primary
-              : action === "heat"
-                ? c.power
-                : action === "steam"
-                  ? c.valve
-                  : c.generator
-                    ? 1
-                    : 0;
-        lever.rotation.z = T.MathUtils.lerp(
-          lever.rotation.z,
-          value > 0 ? 0.5 : -0.45,
-          1 - Math.exp(-elapsed * 10),
+        lever.rotation.z = controlPose(
+          lever.userData.controlKind,
+          controlValue(lever.userData.actuator as Action, c),
         );
       }
       for (const fuel of this.machine.fuel) {

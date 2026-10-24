@@ -11,28 +11,6 @@ import {
 } from "../src/physics.ts";
 import { actions, availability, operate, nextAction } from "../src/startup.ts";
 
-test("cold controls explain dependencies and cannot bypass them", () => {
-  const s = initialState(),
-    c = initialControls();
-  assert.equal(nextAction(s, c), "cooling");
-  for (const action of actions.slice(1)) {
-    const before = { ...c },
-      status = operate(action, s, c);
-    assert.equal(status.ready, false, action);
-    assert.ok(status.requires, action);
-    assert.deepEqual(c, before);
-  }
-  operate("cooling", s, c);
-  assert.equal(c.feed, 1);
-  assert.equal(
-    availability("primary", s, c).ready,
-    false,
-    "command is not actual circulation",
-  );
-  const circulated = advance(s, c, 3);
-  assert.equal(availability("primary", circulated, c).ready, true);
-});
-
 test("five physical controls start the complete energy cycle without a scripted state", () => {
   let s = initialState();
   const c = initialControls();

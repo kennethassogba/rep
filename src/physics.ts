@@ -94,7 +94,7 @@ export function operatingExample() {
 
 export function heatBlock(s: State): string {
   if (s.trip) return s.trip;
-  if (s.primaryFlow < 0.25) return 'L’eau primaire doit circuler : démarrez la pompe primaire.';
+  if (s.primaryFlow < 0.25) return "L'eau primaire doit circuler : démarrez la pompe primaire.";
   if (s.coolingFlow < 0.25) return 'La chaleur doit pouvoir sortir : démarrez le refroidissement.';
   if (s.feedFlow < 0.25) return 'Fermez le cycle secondaire : démarrez la pompe alimentaire.';
   return '';
@@ -102,11 +102,11 @@ export function heatBlock(s: State): string {
 export function steamBlock(s: State): string {
   if (s.condenserT > 75)
     return 'Le condenseur est trop chaud : rétablissez le refroidissement et attendez moins de 75 °C.';
-  if (s.feedFlow < 0.25) return 'Le retour d’eau est arrêté : démarrez la pompe alimentaire.';
+  if (s.feedFlow < 0.25) return "Le retour d'eau est arrêté : démarrez la pompe alimentaire.";
   if (secondaryT(s) < 274.99)
-    return 'Pas encore de vapeur : chauffez l’eau secondaire jusqu’à 275 °C dans ce modèle.';
+    return "Pas encore de vapeur : chauffez l'eau secondaire jusqu'à 275 °C dans ce modèle.";
   if (steamEnergy(s) < 1)
-    return 'La réserve de vapeur est épuisée : augmentez la chaleur ou réduisez l’admission.';
+    return "La réserve de vapeur est épuisée : augmentez la chaleur ou réduisez l'admission.";
   return '';
 }
 export function rates(s: State, c: Controls) {

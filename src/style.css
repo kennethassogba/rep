@@ -106,11 +106,7 @@ svg {
   gap: 7px;
   align-items: center;
 }
-.wordmark span {
-  font-size: 17px;
-  letter-spacing: 0;
-  font-weight: 500;
-}
+
 .heading {
   text-align: center;
 }
@@ -314,32 +310,7 @@ svg {
   font-weight: 550;
   margin: 7px 0 12px;
 }
-.primary-button {
-  display: block;
-  width: 100%;
-  background: #3455ed;
-  color: white;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.2;
-  font-weight: 750;
-  text-align: center;
-  min-height: 42px;
-}
-.primary-button:disabled {
-  background: #f0edf6;
-  color: #656071;
-  border-color: #dfdce7;
-}
-#parody {
-  display: block;
-  text-align: right;
-  font-size: 9px;
-  color: #6b6577;
-  margin-top: 7px;
-}
+
 .game-controls {
   position: absolute;
   inset: auto 28px 13px;
@@ -468,28 +439,19 @@ svg {
   bottom: 0;
   height: 4px;
   background: var(--ink);
-  width: 0;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
 }
-.actuator[data-state="blocked"] {
-  background: #faf9fd;
-  color: #737080;
-  border-color: #b5b1c2;
-  box-shadow: 0 3px 0 #b5b1c2;
-}
+
 .actuator[data-state="active"] {
   background: #c5d9ff;
 }
-.actuator[data-next="true"][data-state="ready"] {
-  background: #ffd83d;
-  box-shadow: 0 3px 0 var(--ink);
-}
+
 .actuator[data-state="waiting"] {
   background: #ffe4f1;
 }
-.actuator[data-blocked="true"] {
-  outline: 3px solid #e33d28;
-  outline-offset: 3px;
-}
+
 .camera {
   display: flex;
   justify-content: center;
@@ -746,7 +708,7 @@ summary {
   font-size: 12px;
 }
 
-#fiction-note {
+#reference-list {
   font-size: 11px;
   margin-top: 20px;
 }
@@ -911,15 +873,7 @@ dialog .drawer-top {
   #speaker {
     font-size: 9px;
   }
-  .primary-button {
-    font-size: 12px;
-    padding: 7px 10px;
-    min-height: 36px;
-  }
-  #parody {
-    font-size: 8px;
-    margin-top: 4px;
-  }
+
   .empty-chair {
     font-size: 50px;
     inset: auto 12px 0;
@@ -1078,10 +1032,6 @@ dialog .drawer-top {
   .goal-meter {
     top: 110px;
   }
-  .primary-button {
-    min-height: 36px;
-    font-size: 12px;
-  }
 }
 @media (forced-colors: active) {
   button,
@@ -1100,7 +1050,7 @@ dialog .drawer-top {
 @media (max-width: 700px) {
   .utility-row {
     display: grid;
-    grid-template-columns: 72px minmax(0, 1fr) 82px;
+    grid-template-columns: 104px minmax(0, 1fr) 60px;
     gap: 5px;
   }
   .playback #pause-label {
@@ -1114,7 +1064,7 @@ dialog .drawer-top {
     justify-self: center;
   }
   .toy-menu summary {
-    max-width: 82px;
+    max-width: 60px;
   }
   .portrait {
     width: 70px;
@@ -1159,5 +1109,123 @@ dialog .drawer-top {
   .speech {
     min-width: 195px;
     max-width: 210px;
+  }
+}
+
+/* The dock mirrors the physical handles. Motion is the control value itself. */
+.actuator {
+  touch-action: none;
+  user-select: none;
+  cursor: ns-resize;
+}
+.actuator:active,
+.actuator[data-dragging="true"] {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+.control-dial {
+  width: 31px;
+  height: 31px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  display: block;
+  background: #ff6045;
+  position: relative;
+}
+.control-dial i {
+  position: absolute;
+  inset: 3px;
+  transform: rotate(var(--control-angle, -135deg));
+}
+.control-dial i:before {
+  content: "";
+  position: absolute;
+  width: 3px;
+  height: 10px;
+  top: 0;
+  left: calc(50% - 1.5px);
+  background: var(--ink);
+  border-radius: 2px;
+}
+#action-heat .control-dial,
+#action-primary .control-dial,
+#action-load .control-dial {
+  width: 17px;
+  height: 33px;
+  border-radius: 5px;
+  background: #262139;
+}
+#action-heat .control-dial i,
+#action-primary .control-dial i,
+#action-load .control-dial i {
+  inset: 3px;
+  transform: translateY(calc((1 - var(--control-value, 0)) * 14px));
+}
+#action-heat .control-dial i:before,
+#action-primary .control-dial i:before,
+#action-load .control-dial i:before {
+  background: #ff6045;
+  border: 1px solid var(--ink);
+  width: 25px;
+  height: 8px;
+  left: -8px;
+  border-radius: 3px;
+}
+#control-hint {
+  position: fixed;
+  z-index: 8;
+  pointer-events: none;
+  background: #262139;
+  color: #fff;
+  padding: 7px 10px;
+  border-radius: 5px;
+  max-width: 260px;
+  font-size: 12px;
+  font-weight: 650;
+}
+#reference-list {
+  display: grid;
+  gap: 9px;
+}
+#reference-list a {
+  color: #2444cc;
+}
+.guide[data-mood="alarm"] .speech {
+  border-color: #d92b12;
+}
+.guide[data-mood="alarm"] .portrait img {
+  transform: rotate(-5deg);
+}
+.goodbye[data-mood="alarm"] .portrait img {
+  transform: translateY(40px);
+}
+@media (max-width: 700px) {
+  .control-dial {
+    width: 25px;
+    height: 25px;
+  }
+  .control-dial i:before {
+    height: 8px;
+  }
+  #action-heat .control-dial,
+  #action-primary .control-dial,
+  #action-load .control-dial {
+    height: 27px;
+  }
+  #control-hint {
+    font-size: 11px;
+  }
+  .toy-menu summary {
+    max-width: 60px;
+  }
+}
+
+@media (max-width: 700px) {
+  .failed #objective {
+    visibility: hidden;
+  }
+  .trip {
+    top: 143px;
+    right: 14px;
   }
 }

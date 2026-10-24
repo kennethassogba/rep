@@ -229,14 +229,50 @@ function stand(g: T.Group, width: number, length: number) {
 function actuator(parent: T.Group, at: V, action: Action) {
   const g = new T.Group();
   g.position.set(...at);
+  g.scale.setScalar(1.4);
   parent.add(g);
   g.userData.action = action;
-  cylinder(g, 0.2, 0.12, [0, 0, 0], palette.dark);
+  cylinder(g, 0.26, 0.16, [0, 0, 0], palette.dark);
   const lever = new T.Group();
   g.add(lever);
-  cylinder(lever, 0.045, 0.35, [0, 0.18, 0], palette.steel);
-  box(lever, [0.3, 0.14, 0.16], [0, 0.4, 0], palette.orange, 0.04);
-  lever.rotation.z = -0.45;
+  const wheel = action === "steam" || action === "cooling";
+  lever.userData.controlKind = wheel ? "wheel" : "lever";
+  if (wheel) {
+    lever.position.y = 0.32;
+    const rim = new T.Mesh(
+      new T.TorusGeometry(0.47, 0.085, 10, 32),
+      new T.MeshStandardMaterial({ color: palette.orange, roughness: 0.7 }),
+    );
+    lever.add(rim);
+    const grip = new T.Mesh(
+      new T.CircleGeometry(0.54, 24),
+      new T.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: T.DoubleSide,
+      }),
+    );
+    lever.add(grip);
+    for (let i = 0; i < 3; i++) {
+      const spoke = box(
+        lever,
+        [0.08, 0.46, 0.09],
+        [0, 0, 0],
+        palette.orange,
+        0.015,
+      );
+      const angle = (i * Math.PI * 2) / 3;
+      spoke.position.set(Math.sin(angle) * 0.22, Math.cos(angle) * 0.22, 0);
+      spoke.rotation.z = -angle;
+    }
+    box(lever, [0.16, 0.16, 0.2], [0, 0, 0], palette.dark, 0.03);
+    box(lever, [0.11, 0.18, 0.12], [0, 0.47, 0.05], 0xffffff, 0.02);
+  } else {
+    cylinder(lever, 0.07, 0.55, [0, 0.27, 0], palette.steel);
+    box(lever, [0.6, 0.22, 0.24], [0, 0.6, 0], palette.orange, 0.06);
+    box(g, [0.12, 0.06, 0.75], [0, 0.05, 0], palette.navy);
+  }
   lever.userData.actuator = action;
   g.traverse((o) => (o.userData.action = action));
   return lever;
@@ -343,7 +379,7 @@ export function buildMachine(): Machine {
     for (const z of [-0.84, 0.84])
       box(core, [1.7, 0.08, 0.04], [0, y, z], palette.steel, 0.01);
   flange(reactor, 1.22, 0.55);
-  actuators.push(actuator(reactor, [0, 4.98, 0], "heat"));
+  actuators.push(actuator(reactor, [0, 4.15, 1.5], "heat"));
   // Pressurizer: opaque boundary, water and steam spaces visible when sectioned.
   const pressure = group("pressurizer");
   hull(pressure, 0.61, 2.6, [0, 1.9, 0], false, palette.navy);

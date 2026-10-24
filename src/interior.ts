@@ -35,14 +35,14 @@ export function interiorSpec(part: Part): { routes: Route[]; notes: Annotation[]
     const spread = k === 'core' ? 0.62 : 0.24;
     for (const x of [-1.5, -0.5, 0.5, 1.5]) for (const z of [-1.5, -0.5, 0.5, 1.5])
       routes.push(primary([[x * spread, -2.1, z * spread], [x * spread, 0, z * spread], [x * spread, 2.1, z * spread]]));
-    note([0.85, 1.5, 0.85], ['Water rises between rods', 'L’eau monte entre les crayons'], 'primary');
+    note([0.85, 1.5, 0.85], ['Water rises between rods', "L'eau monte entre les crayons"], 'primary');
   } else if (part.id === 'reactor/core/assembly/rod') {
     for (let i = 0; i < 6; i++) {
       const a = i * Math.PI / 3, x = Math.sin(a) * 0.57, z = Math.cos(a) * 0.57;
       routes.push(primary([[x, -2.65, z], [x, 0, z], [x, 2.65, z]]));
     }
     for (const y of [-1.5, 0, 1]) add([[0, y, 0], [0.3, y, 0.25], [0.65, y, 0.5]], 'heat', hot);
-    note([0.6, -1.6, 0.8], ['Water outside cladding', 'Eau à l’extérieur de la gaine'], 'primary');
+    note([0.6, -1.6, 0.8], ['Water outside cladding', "Eau à l'extérieur de la gaine"], 'primary');
     note([0.3, 0.8, 0.3], ['Pellet → gap → cladding', 'Pastille → jeu → gaine']);
   } else if (['pellet', 'gap', 'cladding', 'wall'].includes(k) && part.equipment === 'reactor' || part.id.endsWith('/grain') || part.id.endsWith('/ceramic')) {
     for (let i = 0; i < 8; i++) {
@@ -56,7 +56,7 @@ export function interiorSpec(part: Part): { routes: Route[]; notes: Annotation[]
       const a = i * Math.PI / 3;
       add([[0, -1.8, 0], [0, -0.3, 0], [Math.sin(a) * 0.6, 0, Math.cos(a) * 0.6], [1.1, 0.1, 0.6], [2.2, 0, 0]], kind, blue);
     }
-    note([1.4, 0.7, 0.5], ['Wheel → water momentum', 'Roue → mouvement de l’eau']);
+    note([1.4, 0.7, 0.5], ['Wheel → water momentum', "Roue → mouvement de l'eau"]);
   } else if (k === 'turbine' || k === 'stage' || k === 'blade' && part.equipment === 'turbine') {
     for (let i = 0; i < 8; i++) {
       const a = i * Math.PI / 4;
@@ -67,7 +67,7 @@ export function interiorSpec(part: Part): { routes: Route[]; notes: Annotation[]
       }
       add(points, 'steam', steam, blue);
     }
-    note([-1.5, 1.4, 0.7], ['Steam expands → shaft turns', 'La vapeur se détend → l’arbre tourne'], 'rpm');
+    note([-1.5, 1.4, 0.7], ['Steam expands → shaft turns', "La vapeur se détend → l'arbre tourne"], 'rpm');
   } else if (k === 'condenser' || k === 'cooling' || k === 'bundle' && ['condenser', 'cooling'].includes(part.equipment)) {
     for (const y of [-0.8, 0, 0.8]) for (const z of [-0.8, 0, 0.8]) add([[-2.2, y, z], [0, y, z], [2.2, y, z]], 'cooling', blue, 0x997cba);
     for (const x of [-1.2, 0, 1.2]) {
@@ -89,7 +89,7 @@ export function interiorSpec(part: Part): { routes: Route[]; notes: Annotation[]
     const kind: Transport = part.id === 'condenser/hotwell/outlet' ? 'feed' : part.equipment === 'steam' || part.equipment === 'reactor' || part.equipment === 'primary' ? 'primary' : part.equipment === 'condenser' || part.equipment === 'cooling' ? 'cooling' : 'feed';
     for (const x of [-0.35, 0, 0.35]) add([[x, -2, 0], [x, 0, 0], [x, 2, 0]], kind, blue, kind === 'primary' ? hot : blue);
     if (k === 'tube' && part.equipment === 'steam') for (const y of [-0.8, 0, 0.8]) add([[0.5, y, 0], [0.9, y, 0], [1.3, y, 0]], 'exchange', hot);
-    note([0.9, 1, 0.6], ['Flow inside the boundary', 'Écoulement dans l’enveloppe']);
+    note([0.9, 1, 0.6], ['Flow inside the boundary', "Écoulement dans l'enveloppe"]);
   } else if (part.id === 'generator' || k === 'motor' || k === 'stator' || k === 'rotor') {
     if (part.equipment === 'generator') {
       for (let i = 0; i < 4; i++) {

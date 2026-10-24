@@ -85,12 +85,12 @@ export function journeyFrame(progress: number) {
         ? point.x < -3.7 && point.z > -1.2
           ? [
               "Inside the reactor · water heats up",
-              "Dans le réacteur · l’eau chauffe",
+              "Dans le réacteur · l'eau chauffe",
             ]
           : point.z < -1.5 && point.x > -2.3
             ? [
                 "Inside the tubes · heat leaves the water",
-                "Dans les tubes · l’eau cède sa chaleur",
+                "Dans les tubes · l'eau cède sa chaleur",
               ]
             : [
                 "Primary circuit · liquid water",
@@ -99,7 +99,7 @@ export function journeyFrame(progress: number) {
         : u < 0.3
           ? [
               "Steam generator · water becomes steam",
-              "Générateur de vapeur · l’eau devient vapeur",
+              "Générateur de vapeur · l'eau devient vapeur",
             ]
           : u < 0.55
             ? [
@@ -113,7 +113,7 @@ export function journeyFrame(progress: number) {
                 ]
               : [
                   "Feed pump · water returns to the boiler",
-                  "Pompe alimentaire · l’eau retourne chauffer",
+                  "Pompe alimentaire · l'eau retourne chauffer",
                 ];
   return { chapter, u, point, tangent, name };
 }

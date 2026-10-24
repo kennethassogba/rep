@@ -16,13 +16,23 @@ import {
   actions,
   availability,
   operate,
-  nextAction,
+  controlValue,
+  setControl,
   type Action,
 } from "./startup";
 import { parts, roots, tr, ancestry, type Part, type Lang } from "./parts";
 import { modelHTML, translateBlock } from "./ui-copy";
-import { mission, achieved, actionNames, TARGET_MW } from "./game";
+import {
+  mission,
+  achieved,
+  actionNames,
+  TARGET_MW,
+  ReactionDeck,
+  type Reaction,
+} from "./game";
 import { journeyFrame, journeySpeed } from "./journey";
+import { references } from "./references";
+import { leverValue } from "./gestures";
 import type { Addon } from "./playthings";
 
 const svg = (p: string) =>
@@ -87,56 +97,55 @@ let state = initialState(),
 let won = false,
   goodbye = false,
   joke: readonly [string, string] | undefined,
-  jokeUntil = 0;
+  jokeUntil = 0,
+  reaction: Reaction | undefined;
+let deck = new ReactionDeck();
 let scene: MachineScene | undefined,
-  lastNext: Action | undefined = "cooling",
-  lastTrip = "",
-  blocked: Action | undefined;
+  lastTrip = "";
 let sound = false,
   audio: AudioContext | undefined,
   motor: OscillatorNode | undefined,
   hum: GainNode | undefined;
 const app = $("app");
 app.innerHTML = `<main id="experience" tabindex="-1">
-<header class="topbar"><button id="home" class="wordmark" aria-label="Whole plant">REP<span>↖</span></button><div class="heading"><h1></h1><p id="objective"></p></div><div class="view-tools"><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select><button id="info" class="tool">${icons.info}</button></div></header>
-<div id="scene"></div><div class="explore-nav"><button id="back" class="text-button" hidden>${icons.back}<span></span></button><span id="depth"></span></div>
+<header class="topbar"><button id="home" class="wordmark" aria-label="Whole plant">REP</button><div class="heading"><h1></h1><p id="objective"></p></div><div class="view-tools"><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select><button id="info" class="tool">${icons.info}</button></div></header>
+<div id="scene"></div><output id="control-hint" hidden></output><div class="explore-nav"><button id="back" class="text-button" hidden>${icons.back}<span></span></button><span id="depth"></span></div>
 <div class="goal-meter"><output id="power" aria-live="off"><strong id="megawatts">0</strong><span> / 100 MW</span></output><div class="meter-track"><i id="goal-fill"></i></div><span id="goal-caption"></span></div>
-<div class="guide" id="guide"><button id="president" class="portrait" type="button"><span class="empty-chair" aria-hidden="true">🪑</span><img id="portrait" src="/characters/giscard.png" alt="" width="180" height="196"></button><div class="speech"><span id="speaker"></span><p id="guide-line"></p><button id="next-action" class="primary-button"></button><small id="parody"></small></div></div>
+<div class="guide" id="guide"><button id="president" class="portrait" type="button"><span class="empty-chair" aria-hidden="true">🪑</span><img id="portrait" src="/characters/giscard.png" alt="" width="180" height="196"></button><div class="speech"><span id="speaker"></span><p id="guide-line"></p></div></div>
 <div id="journey-caption" class="journey-caption" hidden><span id="journey-circuit"></span><strong id="journey-organ"></strong><p id="journey-wait"></p><button id="next-station" class="text-button" hidden></button></div>
 <nav id="components" class="components" hidden></nav>
-<footer class="game-controls"><div class="utility-row"><div class="playback"><button id="pause" class="text-button"><span class="pause-icon">${icons.pause}</span><span id="pause-label"></span></button><button id="slow" class="text-button" aria-pressed="false">¼×</button><button id="sound" class="tool" aria-pressed="false">${icons.muted}</button></div><button id="follow" class="follow text-button">${icons.primary}<span></span></button><details class="toy-menu" id="toy-menu"><summary id="toy-title"></summary><div class="toy-options">${(["eyes", "baguette", "disco"] as Addon[]).map((id) => `<button id="toy-${id}" data-toy="${id}" aria-pressed="false"></button>`).join("")}</div></details></div>
-<div id="actuators" class="actuators">${actions.map((action, i) => `<button class="actuator" id="action-${action}" data-action="${action}" type="button"><span class="ordinal">${i + 1}</span><span class="actuator-icon">${icons[action]}</span><span class="action-name"></span><span class="action-state" aria-hidden="true"></span><span class="action-progress"></span></button>`).join("")}</div>
+<footer class="game-controls"><div class="utility-row"><div class="playback"><button id="pause" class="text-button"><span class="pause-icon">${icons.pause}</span><span id="pause-label"></span></button><button id="slow" class="text-button" aria-pressed="false">¼×</button><button id="new-game" class="tool">${icons.left}</button><button id="sound" class="tool" aria-pressed="false">${icons.muted}</button></div><button id="follow" class="follow text-button">${icons.primary}<span></span></button><details class="toy-menu" id="toy-menu"><summary id="toy-title"></summary><div class="toy-options">${(["eyes", "baguette", "disco"] as Addon[]).map((id) => `<button id="toy-${id}" data-toy="${id}" aria-pressed="false"></button>`).join("")}</div></details></div>
+<div id="actuators" class="actuators">${actions.map((action) => `<button class="actuator" id="action-${action}" data-action="${action}" type="button"><span class="ordinal">${0}%</span><span class="actuator-icon"><span class="control-dial" aria-hidden="true"><i></i></span></span><span class="action-name"></span><span class="action-state" aria-hidden="true"></span><span class="action-progress"></span></button>`).join("")}</div>
 <div class="camera"><button id="section" class="text-button" aria-pressed="true">${icons.cut}<span></span></button><span id="interaction-hint"></span><button id="left" class="tool">${icons.left}</button><button id="right" class="tool">${icons.right}</button><button id="minus" class="tool">${icons.minus}</button><button id="plus" class="tool">${icons.plus}</button><button id="view-reset" class="tool">${icons.reset}</button></div></footer><p id="status" class="sr-only" role="status"></p><button id="trip" class="trip text-button" hidden>${icons.alert}<span></span></button></main>
-<dialog id="inspector" aria-labelledby="part-title"><div class="drawer-top"><span id="info-label"></span><button id="close-info" class="tool">${icons.close}</button></div><h2 id="part-title"></h2><p id="part-role"></p><p id="measurements"></p><nav id="part-list"></nav><details><summary id="fine-controls"></summary><div id="settings"></div><p id="reason"></p><button id="rearm" hidden></button></details><details id="model"><summary></summary><div id="model-content"></div></details><p id="fiction-note"></p><div class="drawer-foot"><button id="restart"></button><a href="https://github.com/kennethassogba/rep" target="_blank" rel="noreferrer">GitHub ↗</a></div></dialog>`;
+<dialog id="inspector" aria-labelledby="part-title"><div class="drawer-top"><span id="info-label"></span><button id="close-info" class="tool">${icons.close}</button></div><h2 id="part-title"></h2><p id="part-role"></p><p id="measurements"></p><nav id="part-list"></nav><details><summary id="fine-controls"></summary><div id="settings"></div><p id="reason"></p><button id="rearm" hidden></button></details><details id="model"><summary></summary><div id="model-content"></div></details><details id="references"><summary></summary><div id="reference-list"></div></details><div class="drawer-foot"><button id="restart"></button><a href="https://github.com/kennethassogba/rep" target="_blank" rel="noreferrer">GitHub ↗</a></div></dialog>`;
 const setName = (id: string, en: string, fr: string) => {
   $(id).setAttribute("aria-label", L(en, fr));
   $(id).title = L(en, fr);
 };
 function localize() {
   document.documentElement.lang = lang;
-  document.title = L("REP — Light up the Élysée", "REP — Rallume l’Élysée");
+  document.title = L("REP - Light up the Élysée", "REP - Rallume l'Élysée");
   document.querySelector("h1")!.textContent = L(
     "Start a nuclear power plant.",
     "Démarre une centrale nucléaire.",
   );
   $("objective").textContent = L(
-    "Light up the Élysée. Five switches. One very impatient president.",
-    "Rallume l’Élysée. Cinq commandes. Un président très impatient.",
+    "Light up the Élysée. Turn the valves. Try the levers.",
+    "Rallume l'Élysée. Tourne les vannes. Essaie les leviers.",
   );
   $("goal-caption").textContent = L(
     "The palace is waiting",
     "Le palais attend",
   );
-  $("parody").textContent = L("Presidential parody", "Fiction présidentielle");
   $("back").querySelector("span")!.textContent = L("Back", "Retour");
   $("section").querySelector("span")!.textContent = L("Cutaway", "Coupe");
-  $("toy-title").textContent = L("+ Add nonsense", "+ Ajouter une absurdité");
+  $("toy-title").textContent = L("Props", "Objets");
   $("toy-eyes").textContent = L("Googly eyes", "Yeux écarquillés");
   $("toy-baguette").textContent = L("Baguette antenna", "Antenne baguette");
   $("toy-disco").textContent = L("Disco turbine", "Turbine disco");
   $("interaction-hint").textContent = L(
-    "Drag to rotate · click a machine to go inside",
-    "Glisse pour tourner · clique sur une machine pour entrer",
+    "Drag a handle to adjust · click a machine to enter",
+    "Tire un levier pour régler · clique sur une machine pour entrer",
   );
   $("info-label").textContent = L("Inside the machine", "Dans la machine");
   $("fine-controls").textContent = L("Fine controls", "Réglages fins");
@@ -152,7 +161,7 @@ function localize() {
       lang,
     );
   setName("home", "Whole machine", "Machine entière");
-  setName("back", "Go back one level", "Remonter d’un niveau");
+  setName("back", "Go back one level", "Remonter d'un niveau");
   setName("section", "Open the casings", "Ouvrir les enveloppes");
   setName(
     "info",
@@ -161,6 +170,7 @@ function localize() {
   );
   setName("close-info", "Close", "Fermer");
   setName("slow", "Quarter speed", "Vitesse divisée par quatre");
+  setName("new-game", "Restart from cold", "Repartir à froid");
   setName("sound", "Sound", "Son");
   setName("left", "Rotate left", "Tourner à gauche");
   setName("right", "Rotate right", "Tourner à droite");
@@ -186,8 +196,8 @@ function localize() {
   scene?.renderer.domElement.setAttribute(
     "aria-label",
     L(
-      "Cutaway machine. Drag to orbit, click a component to enter it. Numbered buttons operate the circuits.",
-      "Machine en coupe. Glisser pour tourner, cliquer sur une pièce pour y entrer. Les boutons numérotés commandent les circuits.",
+      "Cutaway machine. Turn red wheels or drag handles to operate it. Drag elsewhere to orbit. Click a component to enter. Controls below also work with arrow keys.",
+      "Machine en coupe. Tourner les volants rouges ou tirer les leviers pour agir. Glisser ailleurs pour tourner la vue. Cliquer sur une pièce pour entrer. Les commandes du bas se règlent aussi avec les flèches.",
     ),
   );
   $<HTMLSelectElement>("language").value = lang;
@@ -219,6 +229,7 @@ function navigation() {
     .forEach((b) => (b.onclick = () => drill(b.dataset.part)));
 }
 function drill(id?: string) {
+  $("control-hint").hidden = true;
   focused = id ? parts.get(id) : undefined;
   scene?.setDetail(focused);
   navigation();
@@ -233,31 +244,95 @@ function sync() {
   updateUI();
   renderSettings();
 }
-function act(action: Action) {
-  const result = operate(action, state, controls);
-  blocked = result.ready ? undefined : action;
-  if (!result.ready) {
-    scene?.focusAction(result.requires);
-    announce(
-      `${tr(labels[action], lang)}. ${L("Required", "Requis")} : ${result.requires ? tr(labels[result.requires], lang) : L("restore circulation", "rétablir la circulation")}.`,
-    );
-  } else {
-    paused = false;
-    announce(
-      `${tr(labels[action], lang)} · ${result.active ? L("off", "arrêt") : L("on", "marche")}`,
-    );
-    joke = undefined;
+function respond(value: Reaction) {
+  reaction = value;
+  joke = value.line;
+  jokeUntil = performance.now() + 8000;
+  goodbye = value.reference === "goodbye";
+  $("guide").classList.toggle("goodbye", goodbye);
+  $("guide").dataset.mood = value.mood ?? "";
+  announce(tr(value.line, lang));
+}
+function adjusted(action: Action, value: number, finished: boolean) {
+  setControl(action, value, controls);
+  paused = false;
+  scene?.syncControls(controls);
+  if (finished) {
+    respond(deck.command(action, state, controls, performance.now()));
     clickSound();
+    renderSettings();
   }
-  sync();
+  updateUI();
+}
+function act(action: Action) {
+  operate(action, state, controls);
+  adjusted(action, controlValue(action, controls), true);
 }
 for (const action of actions) {
   const b = $(`action-${action}`);
-  b.onclick = () => act(action);
+  let drag:
+    { id: number; y: number; value: number; moved: boolean } | undefined;
+  let suppressClick = false;
+  b.onclick = (event) => {
+    if (event.detail === 0 || !suppressClick) act(action);
+    suppressClick = false;
+  };
+  b.onpointerdown = (e) => {
+    if (e.button !== 0) return;
+    suppressClick = false;
+    drag = {
+      id: e.pointerId,
+      y: e.clientY,
+      value: controlValue(action, controls),
+      moved: false,
+    };
+    b.setPointerCapture(e.pointerId);
+  };
+  b.onpointermove = (e) => {
+    if (!drag || drag.id !== e.pointerId) return;
+    if (Math.abs(e.clientY - drag.y) > 5) drag.moved = true;
+    if (drag.moved) {
+      b.dataset.dragging = "true";
+      adjusted(action, leverValue(drag.value, drag.y, e.clientY), false);
+    }
+  };
+  const end = (e: PointerEvent) => {
+    if (!drag || drag.id !== e.pointerId) return;
+    const moved = drag.moved;
+    drag = undefined;
+    delete b.dataset.dragging;
+    if (b.hasPointerCapture(e.pointerId)) b.releasePointerCapture(e.pointerId);
+    suppressClick = moved || e.type !== "pointerup";
+    if (moved) adjusted(action, controlValue(action, controls), true);
+  };
+  b.onpointerup = end;
+  b.onpointercancel = end;
+  b.onlostpointercapture = end;
+  b.onkeydown = (e) => {
+    const direction = ["ArrowUp", "ArrowRight"].includes(e.key)
+      ? 1
+      : ["ArrowDown", "ArrowLeft"].includes(e.key)
+        ? -1
+        : 0;
+    if (!direction && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    adjusted(
+      action,
+      e.key === "Home"
+        ? 0
+        : e.key === "End"
+          ? 1
+          : controlValue(action, controls) +
+            direction * (action === "load" ? 1 : 0.1),
+      !e.repeat,
+    );
+  };
   b.onfocus = () => scene?.focusAction(action);
   b.onblur = () => scene?.focusAction();
   b.onpointerenter = () => scene?.focusAction(action);
-  b.onpointerleave = () => scene?.focusAction();
+  b.onpointerleave = () => {
+    if (!drag) scene?.focusAction();
+  };
 }
 $("home").onclick = () => drill();
 $("back").onclick = () => drill(focused?.parent?.id);
@@ -298,8 +373,8 @@ $("restart").onclick = () => {
   state = initialState();
   controls = initialControls();
   paused = false;
-  blocked = undefined;
-  lastNext = "cooling";
+  deck = new ReactionDeck();
+  reaction = undefined;
   lastTrip = "";
   won = false;
   joke = undefined;
@@ -311,6 +386,7 @@ $("restart").onclick = () => {
   sync();
   announce(L("Machine reset to 20 °C", "Machine remise à 20 °C"));
 };
+$("new-game").onclick = () => $("restart").click();
 $("rearm").onclick = () => {
   if (rearm(state, controls)) {
     paused = false;
@@ -355,10 +431,16 @@ function renderInspector() {
   $("model-content").innerHTML = modelHTML(lang);
   $("restart").textContent = L("Play again", "Rejouer");
   $("rearm").textContent = L("Reset teaching trip", "Réarmer le modèle");
-  $("fiction-note").innerHTML = L(
-    'Original parody dialogue. The 100 MW goal is a game rule, not the palace’s electricity demand. Two historical references: de Gaulle’s <a href="https://www.elysee.fr/charles-de-gaulle/1958/06/04/je-vous-ai-compris-discours-prononce-par-le-general-de-gaulle-president-du-conseil-au-forum-dalger-algerie-4-juin-1958" target="_blank" rel="noreferrer">“Je vous ai compris !” (1958)</a> and Giscard’s <a href="https://www.ina.fr/ina-eclaire-actu/1981-valery-giscard-d-estaing-dit-au-revoir-aux-francais" target="_blank" rel="noreferrer">“Au revoir” (1981)</a>. Caricatures generated for this game.',
-    'Dialogues parodiques originaux. L’objectif de 100 MW est une règle du jeu, pas la consommation du palais. Deux références historiques : <a href="https://www.elysee.fr/charles-de-gaulle/1958/06/04/je-vous-ai-compris-discours-prononce-par-le-general-de-gaulle-president-du-conseil-au-forum-dalger-algerie-4-juin-1958" target="_blank" rel="noreferrer">« Je vous ai compris ! » (1958)</a> et <a href="https://www.ina.fr/ina-eclaire-actu/1981-valery-giscard-d-estaing-dit-au-revoir-aux-francais" target="_blank" rel="noreferrer">« Au revoir » (1981)</a>. Caricatures générées pour ce jeu.',
+  $("references").querySelector("summary")!.textContent = L(
+    "Historical references",
+    "Références historiques",
   );
+  $("reference-list").innerHTML = references
+    .map(
+      (ref) =>
+        `<a href="${ref.url}" target="_blank" rel="noreferrer">${tr(ref.label, lang)}</a>`,
+    )
+    .join("");
   renderSettings();
 }
 function renderSettings() {
@@ -397,7 +479,7 @@ function renderSettings() {
     : state.outsideModel
       ? L(
           "Restore primary circulation, then resume. The liquid-only model stops at 340 °C.",
-          "Rétablir le débit primaire puis reprendre. Le modèle liquide s’arrête à 340 °C.",
+          "Rétablir le débit primaire puis reprendre. Le modèle liquide s'arrête à 340 °C.",
         )
       : L(
           "Schematic geometry. Reduced thermal inertia. Circuit pressures are imposed.",
@@ -406,6 +488,7 @@ function renderSettings() {
 }
 function project() {}
 function toggleJourney() {
+  $("control-hint").hidden = true;
   if (scene?.journey) scene.stopJourney();
   else {
     if (focused) drill();
@@ -415,22 +498,8 @@ function toggleJourney() {
 }
 $("follow").onclick = toggleJourney;
 $("next-station").onclick = () => scene?.nextStation();
-$("next-action").onclick = () => {
-  const m = mission(state, controls, won, blocked);
-  if (m.failed) $("restart").click();
-  else if (m.complete) toggleJourney();
-  else if (m.next) act(m.next);
-};
 $("president").onclick = () => {
-  goodbye = !goodbye;
-  $("guide").classList.toggle("goodbye", goodbye);
-  joke = goodbye
-    ? ["“Au revoir.”", "« Au revoir. »"]
-    : [
-        "Back already? The pumps will not start themselves.",
-        "Déjà de retour ? Les pompes ne vont pas se lancer toutes seules.",
-      ];
-  jokeUntil = performance.now() + 5000;
+  respond(deck.take("call"));
   updateUI();
 };
 for (const id of ["eyes", "baguette", "disco"] as Addon[])
@@ -442,17 +511,20 @@ for (const id of ["eyes", "baguette", "disco"] as Addon[])
         id === "eyes"
           ? [
               "It has seen the electricity bill.",
-              "Elle a vu la facture d’électricité.",
+              "Elle a vu la facture d'électricité.",
             ]
           : id === "baguette"
             ? [
                 "Antenna range: one boulangerie.",
-                "Portée de l’antenne : une boulangerie.",
+                "Portée de l'antenne : une boulangerie.",
               ]
             : [
                 "The turbine has joined the French touch.",
                 "La turbine a rejoint la French touch.",
               ];
+      reaction = undefined;
+      goodbye = false;
+      $("guide").classList.remove("goodbye");
       jokeUntil = performance.now() + 5000;
     }
     $("toy-menu").removeAttribute("open");
@@ -461,10 +533,10 @@ for (const id of ["eyes", "baguette", "disco"] as Addon[])
 function updateUI() {
   if (!won && achieved(state, controls)) {
     won = true;
-    announce(L("100 MW! The Élysée is lit.", "100 MW ! L’Élysée est allumé."));
+    respond(deck.take("win"));
+    announce(L("100 MW! The Élysée is lit.", "100 MW ! L'Élysée est allumé."));
   }
-  const r = rates(state, controls),
-    next = nextAction(state, controls);
+  const r = rates(state, controls);
   const powerText = r.electric.toLocaleString("en-GB", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
@@ -490,97 +562,80 @@ function updateUI() {
   for (const a of actions) {
     const b = $(`action-${a}`),
       v = availability(a, state, controls),
-      stateName = v.active
-        ? "active"
-        : v.ready
-          ? "ready"
-          : a === "steam" && controls.power > 0
-            ? "waiting"
-            : "blocked";
-    const previousState = b.dataset.state;
+      value = controlValue(a, controls);
+    const stateName = v.active ? (v.requires ? "waiting" : "active") : "ready";
     b.dataset.state = stateName;
-    b.dataset.next = String(a === next);
-    b.dataset.blocked = String(a === blocked);
     b.setAttribute("aria-pressed", String(v.active));
-    b.setAttribute("aria-disabled", String(!v.ready));
-    const name = `${tr(labels[a], lang)} · ${v.active ? L("stop", "arrêter") : L("start", "démarrer")}${!v.ready && v.requires ? ` · ${L("requires", "nécessite")} ${tr(labels[v.requires], lang)}` : ""}`;
-    b.setAttribute("aria-label", name);
-    b.title = name;
-    if (previousState !== stateName)
-      b.querySelector(".action-state")!.innerHTML =
-        stateName === "active"
-          ? icons.check
-          : stateName === "waiting"
-            ? icons.clock
-            : stateName === "blocked"
-              ? icons.lock
-              : "";
+    const amount =
+      a === "load"
+        ? value
+          ? L("ON", "ON")
+          : L("OFF", "OFF")
+        : `${Math.round(value * 100)}%`;
+    b.querySelector(".ordinal")!.textContent = amount;
+    b.setAttribute("aria-label", `${tr(labels[a], lang)}, ${amount}`);
+    b.title = L(
+      "Click to toggle. Drag up/down or use arrow keys to adjust.",
+      "Cliquer pour basculer. Glisser verticalement ou utiliser les flèches pour régler.",
+    );
+    b.style.setProperty("--control-value", String(value));
+    b.style.setProperty("--control-angle", `${-135 + value * 270}deg`);
     const progress =
       a === "cooling"
         ? Math.min(state.coolingFlow, state.feedFlow)
         : a === "primary"
           ? state.primaryFlow
           : a === "heat"
-            ? Math.max(0, (secondaryT(state) - 20) / 255)
+            ? r.heat / 1200
             : a === "steam"
-              ? Math.min(1, rpm(state) / 400)
-              : r.electric > 1
-                ? 1
-                : 0;
-    (b.querySelector(".action-progress") as HTMLElement).style.width =
-      `${progress * 100}%`;
-  }
-  if (next !== lastNext) {
-    lastNext = next;
-    blocked = undefined;
-    announce(
-      next
-        ? `${L("Next", "Suite")} : ${tr(labels[next], lang)}`
-        : L(
-            "Electrical power is being produced. Every circuit remains adjustable.",
-            "La centrale produit de l’électricité. Chaque circuit reste réglable.",
-          ),
-    );
+              ? Math.min(1, r.admitted / 700)
+              : Math.min(1, r.electric / TARGET_MW);
+    (b.querySelector(".action-progress") as HTMLElement).style.transform =
+      `scaleX(${Math.max(0, Math.min(1, progress))})`;
+    const symbol = v.active && v.requires ? "clock" : v.active ? "check" : "";
+    if (b.dataset.symbol !== symbol) {
+      b.dataset.symbol = symbol;
+      b.querySelector(".action-state")!.innerHTML = symbol ? icons[symbol] : "";
+    }
   }
   $("trip").hidden = !state.trip && !state.outsideModel;
+  $("experience").classList.toggle(
+    "failed",
+    !!state.trip || state.outsideModel,
+  );
   if (state.trip !== lastTrip) {
     lastTrip = state.trip;
-    if (state.trip) announce(translateBlock(state.trip, lang));
+    if (state.trip) respond(deck.take("trip"));
   }
-  const m = mission(state, controls, won, blocked);
-  const line = joke && performance.now() < jokeUntil ? joke : m.line;
+  const m = mission(state, controls, won);
+  const reacting = joke && performance.now() < jokeUntil;
+  if (!reacting && goodbye) {
+    goodbye = false;
+    $("guide").classList.remove("goodbye");
+  }
+  $("guide").dataset.mood = (reacting ? reaction?.mood : m.mood) ?? "";
+  const line = reacting ? joke! : m.line;
   const text = tr(line, lang);
   if ($("guide-line").textContent !== text) $("guide-line").textContent = text;
-  const character = goodbye ? "giscard" : m.character;
+  const character = reacting && reaction ? reaction.character : m.character;
   const portrait = $<HTMLImageElement>("portrait");
   if (portrait.dataset.character !== character) {
     portrait.src = `/characters/${character}.png`;
     portrait.dataset.character = character;
   }
   $("speaker").textContent = character === "giscard" ? "Giscard" : "De Gaulle";
-  $("next-action").textContent = m.failed
-    ? L("Restart the challenge ↻", "Relancer le défi ↻")
-    : m.complete
-      ? L("Go inside →", "Plonger dans la machine →")
-      : m.next
-        ? m.ready
-          ? `${tr(actionNames[m.next], lang)} →`
-          : L("Working…", "Ça travaille…")
-        : L("Power is rising…", "La puissance monte…");
-  $<HTMLButtonElement>("next-action").disabled =
-    !m.failed && !m.complete && !m.ready;
   $("goal-fill").style.transform =
     `scaleX(${Math.min(1, Math.max(0, r.electric / TARGET_MW))})`;
   $("goal-caption").textContent = m.complete
-    ? L("Élysée lit. Dinner saved.", "Élysée allumé. Dîner sauvé.")
-    : L("Light up the Élysée", "Rallume l’Élysée");
+    ? L("Élysée lit", "Élysée allumé")
+    : L("Light up the Élysée", "Rallume l'Élysée");
   $("experience").classList.toggle("won", m.complete);
   const travelling = !!scene?.journey;
   $("experience").classList.toggle("travelling", travelling);
   $("journey-caption").hidden = !travelling;
   $("follow").querySelector("span")!.textContent = travelling
     ? L("Leave the circuit", "Quitter le circuit")
-    : L("Follow the water", "Suivre l’eau");
+    : L("Follow the water", "Suivre l'eau");
   $("follow").setAttribute("aria-pressed", String(travelling));
   $("next-station").hidden = !scene?.reduced;
   if (scene?.journey) {
@@ -659,6 +714,15 @@ $("sound").onclick = async () => {
 try {
   scene = new MachineScene($("scene"));
   scene.onAction = act;
+  scene.onAdjust = adjusted;
+  scene.onControlHint = (action, x = 0, y = 0) => {
+    const hint = $("control-hint");
+    hint.hidden = !action;
+    if (!action) return;
+    hint.textContent = `${tr(labels[action], lang)} ${Math.round(controlValue(action, controls) * 100)}% · ${action === "steam" || action === "cooling" ? L("turn", "tourner") : L("pull", "tirer")}`;
+    hint.style.left = `${Math.max(8, Math.min(innerWidth - 260, x - 110))}px`;
+    hint.style.top = `${Math.max(90, y - 55)}px`;
+  };
   scene.onDrill = drill;
   scene.onProject = project;
   scene.onJourneyEnd = () => updateUI();
@@ -723,7 +787,7 @@ function frame(now: number) {
     announce(
       L(
         "Model limit reached. Restore circulation using the controls in information.",
-        "Limite du modèle atteinte. Rétablir la circulation dans les commandes du panneau d’information.",
+        "Limite du modèle atteinte. Rétablir la circulation dans les commandes du panneau d'information.",
       ),
     );
   }

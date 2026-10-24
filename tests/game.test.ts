@@ -42,14 +42,12 @@ test("the five-switch game wins from cold using the energy model, without settin
   assert.equal(mission(s, c, true).next, "load");
 });
 
-test("the guide explains a premature action and changes when its prerequisite is ready", () => {
+test("the guide explains heating while all commands remain available", () => {
   const s = initialState(),
     c = initialControls();
-  assert.match(mission(s, c, false, "load").line[0], /steam valve/);
-  assert.equal(mission(s, c, false).next, "cooling");
-  operate("cooling", s, c);
-  assert.equal(mission(s, c, false).ready, false);
-  assert.equal(mission(advance(s, c, 3), c, false).ready, true);
+  for (const a of actions) operate(a, s, c);
+  assert.match(mission(s, c, false).line[0], /275/);
+  assert.equal(mission(s, c, false).ready, true);
 });
 
 test("fluid travel is position-continuous, finite, and crosses between two separate water circuits", () => {

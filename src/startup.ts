@@ -2,7 +2,6 @@ import {
   heatBlock,
   steamBlock,
   rpm,
-  rates,
   type State,
   type Controls,
 } from "./physics.ts";
@@ -13,52 +12,50 @@ export type Availability = {
   active: boolean;
   requires?: Action;
 };
+export function controlValue(action: Action, c: Controls): number {
+  return action === "cooling"
+    ? c.cooling
+    : action === "primary"
+      ? c.primary
+      : action === "heat"
+        ? c.power
+        : action === "steam"
+          ? c.valve
+          : Number(c.generator);
+}
+export function setControl(action: Action, value: number, c: Controls) {
+  if (!Number.isFinite(value)) return;
+  const v = Math.max(0, Math.min(1, value));
+  if (action === "cooling") c.cooling = c.feed = v;
+  if (action === "primary") c.primary = v;
+  if (action === "heat") c.power = v;
+  if (action === "steam") c.valve = v;
+  if (action === "load") c.generator = v >= 0.5;
+}
+// Commands are always available. Prerequisites describe the physical response,
+// never disable a handle: an open cold valve simply has no steam to admit.
 export function availability(
   action: Action,
   s: State,
   c: Controls,
 ): Availability {
-  const active =
-    action === "cooling"
-      ? c.cooling > 0
-      : action === "primary"
-        ? c.primary > 0
-        : action === "heat"
-          ? c.power > 0
-          : action === "steam"
-            ? c.valve > 0
-            : c.generator;
-  if (active) return { ready: true, active };
-  if (action === "primary" && (s.coolingFlow < 0.75 || s.feedFlow < 0.75))
-    return { ready: false, active, requires: "cooling" };
+  const active = controlValue(action, c) > 0;
+  let requires: Action | undefined;
   if (action === "heat" && heatBlock(s))
-    return {
-      ready: false,
-      active,
-      requires:
-        s.coolingFlow < 0.25 || s.feedFlow < 0.25 ? "cooling" : "primary",
-    };
+    requires =
+      s.coolingFlow < 0.25 || s.feedFlow < 0.25 ? "cooling" : "primary";
   if (action === "steam" && steamBlock(s))
-    return {
-      ready: false,
-      active,
-      requires: s.feedFlow < 0.25 || s.condenserT > 75 ? "cooling" : "heat",
-    };
-  if (action === "load" && (rpm(s) < 400 || rates(s, c).admitted < 1))
-    return { ready: false, active, requires: "steam" };
-  return {
-    ready: !s.outsideModel || action === "cooling" || action === "primary",
-    active,
-  };
+    requires = s.feedFlow < 0.25 || s.condenserT > 75 ? "cooling" : "heat";
+  if (action === "load" && rpm(s) < 400) requires = "steam";
+  return { ready: true, active, requires };
 }
 export function operate(action: Action, s: State, c: Controls): Availability {
   const status = availability(action, s, c);
-  if (!status.ready) return status;
-  if (action === "cooling") c.cooling = c.feed = status.active ? 0 : 1;
-  if (action === "primary") c.primary = status.active ? 0 : 1;
-  if (action === "heat") c.power = status.active ? 0 : 0.65;
-  if (action === "steam") c.valve = status.active ? 0 : 0.7;
-  if (action === "load") c.generator = !c.generator;
+  setControl(
+    action,
+    status.active ? 0 : action === "heat" ? 0.65 : action === "steam" ? 0.7 : 1,
+    c,
+  );
   return status;
 }
 export function nextAction(s: State, c: Controls): Action | undefined {

@@ -1,6 +1,6 @@
-# REP — Light up the Élysée
+# REP  -  Light up the Élysée
 
-A browser game about starting a nuclear power plant. Five switches, a palace in the dark, and two impatient presidents.
+Turn valves and pull levers to light up the Élysée. Giscard and de Gaulle react to the way you run the machine.
 
 **[Play at rep.keff.uk](https://rep.keff.uk)**
 
@@ -8,26 +8,25 @@ English by default, French from the language menu. Three.js runs the whole machi
 
 ## Play
 
-Giscard and de Gaulle guide the startup: cooling pumps → primary water → core heat → steam turbine → generator. Each command changes the machine. The objective is **100 MW**, at which point the palace windows light up. This is an absurd game target, not the actual electricity demand of the Élysée.
+The objective is **100 MW**, when the palace windows light up. This is a game target, not the electricity demand of the Élysée.
 
-Switches remain reversible after winning. Cut the output and the lights go out. Lose circulation and the heat source trips; the guide offers a restart. Fine controls and the energy model are available in the information drawer.
+Operate the five controls in any order. Turn the red wheels in the 3D scene or drag the levers vertically. The bottom controls mirror their positions: click to toggle, drag vertically for a continuous setting, or use arrow keys in 10% steps (Home/End for the limits). The generator is an on/off connection.
+
+Opening a cold steam valve or connecting an idle generator is allowed; neither produces power. A heat request waits for actual circulation. Cutting a running pump can trip the heat source. Restore the pumps, set heat to zero and use Info to rearm once cooled, or use the round arrow beside Pause to restart cold. The dialogue guides and reacts; it contains no action button.
 
 - **Follow the water** puts the camera beside a droplet inside the actual machine. The shells open and turn translucent. The journey follows primary water, crosses the tube wall as heat, then follows a different water circuit as steam and condensate. The waters do not mix.
 - Travel speed follows circulation and steam admission. No flow means no travel. Pause stops the model and the droplet; quarter speed slows both. Camera transitions can settle while paused. With reduced motion enabled, explicit next-stop controls replace continuous camera travel.
 - Click equipment to explore it: nine equipment trees, 168 nodes, down to fuel pellets, pump vanes and generator windings. The original equipment remains in place during entry; deeper representations appear at the selected part.
-- Add eyes, a baguette antenna or a disco ball. These are visible, removable props with no physical effect. Call the president for the “Au revoir” gag; click again to bring him back.
+- Add eyes, a baguette antenna or a disco ball. These are visible, removable props with no physical effect. Call the president to cycle through extra historical gags, including the empty chair from "Au revoir".
 - Drag to rotate. Focus the canvas and use arrow keys or +/−. Escape exits a journey or returns one level. Pause, zoom and navigation have keyboard controls. Machine sound is off by default.
 
 The app starts cold at 20 °C and advances four model seconds per real second; quarter speed uses one. Thermal inertia is also deliberately reduced. Neither clock represents a real plant startup schedule.
 
-## Fiction and references
+## Historical references
 
-Dialogue is original parody, labelled in the interface. Two short historical quotations are used:
+Twelve references underpin the reactions: the 1958 Algiers speech, Quebec in 1967, the Shadoks, May 1968, the 1969 referendum, the Messmer plan, ORTF television, the 1974 debate, the voting age at 18, the energy-saving campaigns and the 1981 farewell. Sources are linked under Info > Historical references and recorded in [src/references.ts](src/references.ts).
 
-- De Gaulle, [“Je vous ai compris !”, 4 June 1958](https://www.elysee.fr/charles-de-gaulle/1958/06/04/je-vous-ai-compris-discours-prononce-par-le-general-de-gaulle-president-du-conseil-au-forum-dalger-algerie-4-juin-1958).
-- Giscard, [“Au revoir”, 19 May 1981](https://www.ina.fr/ina-eclaire-actu/1981-valery-giscard-d-estaing-dit-au-revoir-aux-francais).
-
-The presidents did not say the game's other lines. The caricatures were generated for this game; [asset methods and prompts](docs/ASSETS.md) are recorded.
+The game adapts these events into original jokes. They are not transcripts of the presidents discussing a reactor. [Character asset methods and prompts](docs/ASSETS.md) are recorded separately.
 
 Interaction references: [Neal's iPhone builder](https://neal.fun/design-the-next-iphone/) for immediately visible consequences; [Google Japan CAPS](https://archive.google/caps/) for absurd engineering; [April Zhu's Colorfigures](https://april-zhu.com/colorfigures) for saturated colour and inked machinery. No reference-site assets or code are included.
 
