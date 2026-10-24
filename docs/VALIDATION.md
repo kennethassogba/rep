@@ -19,6 +19,7 @@ Checked in the Codex Chromium browser on Linux, at 1280 × 720/800 and 320 × 74
 - Opened the native reactor and generator. Navigated reactor → core → assembly → rod → pellet → ceramic → grain, and generator → stator. Verified Escape ascent, rapid successive selections, component lists and the information drawer.
 - Verified language switching, slider keyboard input and synchronized control values when opening the drawer. English is the default when no saved preference exists.
 - The 320 px layout has no horizontal document overflow. Physical controls become a five-button dock; playback and camera controls remain separate. The information drawer scrolls within the viewport.
+- Playback pictograms now update only when their state changes. Eight consecutive pause/resume clicks and a pause during a return flight passed after this fix. The rapidly changing power output is excluded from live announcements.
 - No browser warnings or errors appeared in the inspected session. Visual checks cover representative views, not every one of the 168 nodes.
 
 ## Interface review
@@ -32,6 +33,7 @@ Reviewed with better-interface and avoid-ai-writing: accessibility, colour, layo
 | Medium | Deep navigation | Parent faces obscured the selected part; open lids could crowd the header. | Retain only faint parent outlines and frame the opened geometry. Preserve horizontal shaft orientation in generator details. | Keep the destination readable during a dive. |
 | Medium | Native equipment | Transport disappeared when entering a physical component. | Attach model-driven internal routes to the equipment itself. | Preserve flow through transitions. |
 | Medium | Mobile controls | Small camera targets and a tight chassis frame. | Use 44 px bottom controls, retain rotation through dragging/keyboard, and widen portrait framing. | Keep controls usable and the whole machine visible at 320 px. |
+| Medium | Playback | Replacing the pause SVG on every value update could interrupt a pointer click. | Update pictograms only when their state changes. | Keep the pointer target stable during simulation and camera motion. |
 | Medium | Recovery | A domain stop could disable the pump needed to recover. | Allow circulation commands at the model boundary. | Let the model cool and rearm. |
 
 Native buttons, labelled ranges, a native dialog, visible focus and an accessible canvas name provide keyboard alternatives. Icon controls retain bilingual names and prerequisite descriptions. The white/navy/orange palette contains no green or lime. Copy review was manual; no AI-writing detector was used.

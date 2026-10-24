@@ -100,7 +100,7 @@ let sound = false,
   hum: GainNode | undefined;
 const app = $("app");
 app.innerHTML = `<main id="experience" tabindex="-1"><h1 class="sr-only"></h1><div id="scene"></div>
-<header class="topbar"><div class="identity"><button id="home" class="tool">${icons.plant}<span>01</span></button><button id="back" class="tool" hidden>${icons.back}</button><span id="depth" aria-hidden="true"></span></div><output id="power" class="power"><strong id="megawatts">0.0</strong><span>MW</span></output><div class="view-tools"><button id="section" class="tool" aria-pressed="true">${icons.cut}</button><button id="info" class="tool">${icons.info}</button></div></header>
+<header class="topbar"><div class="identity"><button id="home" class="tool">${icons.plant}<span>01</span></button><button id="back" class="tool" hidden>${icons.back}</button><span id="depth" aria-hidden="true"></span></div><output id="power" class="power" aria-live="off"><strong id="megawatts">0.0</strong><span>MW</span></output><div class="view-tools"><button id="section" class="tool" aria-pressed="true">${icons.cut}</button><button id="info" class="tool">${icons.info}</button></div></header>
 <div id="actuators" class="actuators">${actions.map((action, i) => `<button class="actuator" id="action-${action}" data-action="${action}" type="button"><span class="actuator-icon">${icons[action]}</span><svg class="progress" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22"/></svg><span class="action-state" aria-hidden="true"></span><span class="ordinal" aria-hidden="true">0${i + 1}</span></button>`).join("")}</div>
 <nav id="components" class="components" hidden></nav>
 <footer class="bottom-bar"><div class="playback"><button id="pause" class="tool">${icons.pause}</button><button id="slow" class="tool" aria-pressed="false">${icons.slow}</button><button id="sound" class="tool" aria-pressed="false">${icons.muted}</button></div><div class="camera"><button id="left" class="tool">${icons.left}</button><button id="right" class="tool">${icons.right}</button><button id="minus" class="tool">${icons.minus}</button><button id="plus" class="tool">${icons.plus}</button><button id="view-reset" class="tool">${icons.reset}</button></div></footer><p id="status" class="sr-only" role="status"></p><button id="trip" class="trip tool" hidden>${icons.alert}</button></main>
@@ -386,12 +386,19 @@ function project() {
 function updateUI() {
   const r = rates(state, controls),
     next = nextAction(state, controls);
-  $("megawatts").textContent = r.electric.toLocaleString("en-GB", {
+  const powerText = r.electric.toLocaleString("en-GB", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
+  if ($("megawatts").textContent !== powerText)
+    $("megawatts").textContent = powerText;
   $("power").setAttribute("data-active", String(r.electric >= 1));
-  $("pause").innerHTML = paused ? icons.play : icons.pause;
+  // Keep the clicked SVG alive between pointer down and pointer up.
+  const glyph = paused ? "play" : "pause";
+  if ($("pause").dataset.glyph !== glyph) {
+    $("pause").dataset.glyph = glyph;
+    $("pause").innerHTML = icons[glyph];
+  }
   setName(
     "pause",
     paused ? "Resume simulation" : "Pause simulation",
@@ -407,6 +414,7 @@ function updateUI() {
           : a === "steam" && controls.power > 0
             ? "waiting"
             : "blocked";
+    const previousState = b.dataset.state;
     b.dataset.state = stateName;
     b.dataset.next = String(a === next);
     b.dataset.blocked = String(a === blocked);
@@ -415,14 +423,15 @@ function updateUI() {
     const name = `${tr(labels[a], lang)} · ${v.active ? L("stop", "arrêter") : L("start", "démarrer")}${!v.ready && v.requires ? ` · ${L("requires", "nécessite")} ${tr(labels[v.requires], lang)}` : ""}`;
     b.setAttribute("aria-label", name);
     b.title = name;
-    b.querySelector(".action-state")!.innerHTML =
-      stateName === "active"
-        ? icons.check
-        : stateName === "waiting"
-          ? icons.clock
-          : stateName === "blocked"
-            ? icons.lock
-            : "";
+    if (previousState !== stateName)
+      b.querySelector(".action-state")!.innerHTML =
+        stateName === "active"
+          ? icons.check
+          : stateName === "waiting"
+            ? icons.clock
+            : stateName === "blocked"
+              ? icons.lock
+              : "";
     const progress =
       a === "cooling"
         ? Math.min(state.coolingFlow, state.feedFlow)
