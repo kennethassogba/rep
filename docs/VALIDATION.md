@@ -1,42 +1,44 @@
 # Validation
 
-Checked on 25 October 2026 for direct 3D controls and free-order play. These checks establish software behaviour, not scientific qualification.
+Checked on 25 October 2026 for the mobile game rebuild.
 
 ## Automated
 
-- 37 tests pass. All 120 permutations of the five commands reach the target from a cold state without replacing the physics state or assigning electrical output.
-- Cold steam and generator commands are accepted but produce no energy. Heat demand waits for actual circulation.
-- Continuous input clamps to its range and rejects non-finite values. The valve gesture crosses the angular seam without jumping; lever input clamps at both limits.
-- Cutting a running primary pump triggers the actual model trip. Existing tests verify recovery, conservation, pause, frame-duration stability and the model boundary.
-- Contextual reactions vary, detect repeated rapid commands and link to documented references.
-- Source-copy checks reject hidden formatting characters, non-breaking spaces, smart quotes, long dashes, Unicode ellipses and trailing whitespace. They also reject the removed dialogue button, logo arrow and stock labels.
-- Existing tests cover nine equipment trees, 168 nodes, finite geometry, native interiors, continuous travel curves, water-circuit separation and reversible shell opening.
-- TypeScript and production build pass. Vite still reports the existing Three.js chunk above 500 kB; no new runtime dependency was added.
+10 tests pass:
+
+- All 24 orders of the four commands reach 100 MW. Victory fires once.
+- Cold commands cannot produce electricity; opening the grid alone does nothing.
+- Cutting the grid removes output while the turbine coasts.
+- Cutting hot water triggers a strike, cools the core and permits recovery.
+- Pause freezes the game and reaction timers.
+- Drag input, limits, switch quantization and invalid values are covered.
+- A first animation timestamp earlier than setup cannot produce a negative step.
+- Rapid commands trigger the chaos reaction with a cooldown.
+- Deterministic stress play stays finite and bounded at different frame rates.
+- Interface copy rejects hidden characters, non-breaking spaces, long dashes, smart quotes, Unicode ellipses and trailing whitespace.
+
+TypeScript and the Vite production build pass. No runtime dependency was added. The application chunk is about 24 kB; Three.js is about 498 kB before compression.
 
 ## Browser checks
 
-In the in-app Chromium browser, at 1280 x 720 and 320 x 780:
+In Chromium at 320 x 568, 390 x 844, 844 x 390 and 1280 x 800:
 
-- Dragged the actual primary lever to 57% and turned the cooling wheel to 24%. The dock reflected both changes, without camera orbit or accidental component entry.
-- After enlarging the handles and moving the reactor handle clear of its opening lid, dragged the reactor to 65%, clicked the generator, steam and cooling controls in the 3D scene, then dragged the primary lever to 100%. The plant reached the target in this nonstandard order.
-- Dragged the dock steam control from 70% to 100%. Arrow keys, Home and End adjusted the same controls. An early heat request stayed inactive until circulation was established.
-- A cold valve and idle generator produced different historical reactions. Cutting a running pump produced the strike reaction, followed by the actual trip and recovery guidance. Disconnecting the palace immediately removed electrical output and triggered the empty-chair farewell.
-- Pause stopped the fluid journey, leaving its position caption visible. Leaving the circuit returned to the overview. English/French switching retained the machine state.
-- Restart returned the machine and all five control readings to cold/zero. The information panel exposed 12 historical references. The speech bubble contained no action button.
-- Corrected a clipped French cooling label, a mobile alert/subtitle overlap and a reactor handle hidden by its opening lid. Mobile text and controls fit without horizontal page overflow.
-- Removed the repeated header subtitle and permanent footer instructions. Handle hints appear only while hovering or dragging, and clear on release.
-- Runtime visible text and title contained none of the forbidden typography characters. No browser warnings or errors were reported during the checks.
+- The page fits the viewport without scrolling.
+- Four distinct handles operate the machine directly. Small-phone hit areas no longer overlap.
+- Pointer dragging changes water, keyboard End changes heat, and tapping steam/grid completes a game. Output reached 162 MW during the observed run.
+- Camera movement follows the selected control. Overview and Escape return to the complete machine.
+- The pump opens; fuel changes color; fluid beads move inside translucent pipes.
+- A cold heat command brings de Gaulle forward with NON, steam and a jumping lid.
+- Disconnecting a running palace produces AU REVOIR and throws Giscard off his chair. Pause freezes the reaction.
+- Restart clears all four inputs. English/French switching, pause and quarter speed respond.
+- Fixed a negative first-frame interval found during the initial browser run; the fix has an automated regression test.
 
-Pointer interaction was exercised in the browser, including at mobile width. This is not a physical touchscreen or low-end-device performance qualification.
-
-Production smoke: the deployed HTML, JavaScript and CSS matched the local build byte for byte. All five 3D commands were exercised on rep.keff.uk and output reached 201 MW.
+These are desktop-browser pointer and viewport tests. Physical iOS/Android touch, haptics, home-screen installation and low-end GPU performance have not been tested.
 
 ## Design review
 
-Applied better-interface and avoid-ai-writing. Kept the established pop palette, inked machinery and user-requested historical satire. The dock positions mirror actual control requests; its lower strips show the model's response. Guidance and actions are separate. Controls have visible focus and keyboard alternatives.
+Applied better-interface and avoid-ai-writing. The manual Impeccable detector returned no findings. No finding was suppressed. The previous layout-animation finding disappeared with removal of the old interface.
 
-The manual Impeccable detector reported no findings. No rule or value was suppressed. The earlier progress-meter layout-animation finding remains fixed with scaleX.
+## Publication
 
-## Limits
-
-One machine is available. Geometry and travel routes are schematic. The model has reduced inertia and imposed pressures, with no local CFD, neutronics or accident analysis. The 100 MW objective is a game rule, not palace consumption. Accessories do not affect physics. Historical events inspire original dialogue; sources are available in the information panel.
+Published to rep.keff.uk as Worker version `0812dc1f-61ca-443a-9d8a-657177037a9b`. The served HTML, JavaScript, CSS and web manifest match the local build byte for byte. All four controls were exercised on the public site; output reached 152 MW and the palace victory appeared. The production browser reported no JavaScript errors. The finish reviewer returned `ship` with no material fixes; physical-device touch and motion quality remain outside the still-image review.

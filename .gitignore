@@ -4,3 +4,5 @@ dist/
 *.log
 .cloudflare/
 .env*
+
+.impeccable/review/
