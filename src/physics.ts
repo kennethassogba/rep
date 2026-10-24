@@ -84,6 +84,14 @@ export const storedEnergy = (s: State) =>
 export const balanceError = (s: State) =>
   s.supplied - s.exported - s.rejected - s.losses - storedEnergy(s);
 
+/** A reproducible operating example integrated from cold, with the same energy ledger. */
+export function operatingExample() {
+  const controls: Controls = { primary: 1, cooling: 1, feed: 1, power: 0.65, valve: 0.7, generator: true };
+  let state = initialState();
+  for (let i = 0; i < 3; i++) state = advance(state, controls, 120);
+  return {state, controls};
+}
+
 export function heatBlock(s: State): string {
   if (s.trip) return s.trip;
   if (s.primaryFlow < 0.25) return 'L’eau primaire doit circuler : démarrez la pompe primaire.';

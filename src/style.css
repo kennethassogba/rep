@@ -957,3 +957,23 @@ dialog pre {
     left: auto;
   }
 }
+
+/* Values stay attached to the process they describe. */
+.flow-note {
+  position: absolute;
+  transform: translate(-15%, -50%);
+  pointer-events: none;
+  color: #394254;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 3px 7px 3px 11px;
+  border-left: 1px solid #8b9dbb;
+  background: rgba(255, 255, 255, 0.92);
+  max-width: 200px;
+}
+.flow-note span, .flow-note strong { display: block; }
+.flow-note strong { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .flow-note { max-width: 145px; font-size: 10px; transform: translate(-40%, -50%); }
+  .flow-note strong { font-size: 13px; }
+}

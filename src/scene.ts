@@ -5,6 +5,8 @@ import { rates, rpm, type State, type Controls } from "./physics";
 import { buildDetail } from "./detail";
 import { parts, tr, type Part, type Lang } from "./parts";
 import { inkMaterial } from "./ink";
+import { Interior, annotationValue } from "./interior";
+import { opens, openSection, pickedSphere } from "./section";
 
 type View = {
   target: T.Vector3;
@@ -17,6 +19,7 @@ type Layer = {
   center: T.Vector3;
   radius: number;
   view?: View;
+  interior: Interior;
 };
 type Flight = {
   start: number;
@@ -24,6 +27,8 @@ type Flight = {
   to: View;
   weights: Map<T.Object3D, number>;
   destinations: Map<T.Object3D, number>;
+  openings: Map<T.Object3D, [number, number]>;
+  descending: boolean;
 };
 type V = [number, number, number];
 const colors = {
@@ -66,17 +71,17 @@ export class PlantScene {
   detailRadius = 3;
   hovered: T.Mesh[] = [];
   hoverId?: string;
-  previewPart(id?: string) {
-    if (this.hoverId === id) return;
+  previewPart(id?: string, picked?: T.Object3D) {
+    if (this.hoverId === id && !picked) return;
     this.hoverId = id;
     for (const mesh of this.hovered)
       (mesh.material as T.MeshToonMaterial).emissive.setHex(0);
     this.hovered = [];
-    const source = this.detail
+    const source = picked ?? (this.detail
       ? this.activeObject()
       : id
         ? this.groups.get(id as EquipmentId)
-        : undefined;
+        : undefined);
     source?.traverse((o) => {
       if (
         o instanceof T.Mesh &&
@@ -94,6 +99,10 @@ export class PlantScene {
   flight?: Flight;
   weights = new Map<T.Object3D, number>();
   plantView?: View;
+  picked?: { id: string; sphere: T.Sphere };
+  lastState?: State;
+  lastControls?: Controls;
+  annotations: HTMLDivElement[] = [];
   viewHalf = 6.5;
   activeObject() {
     return this.detail ? this.layers.get(this.detail.id)?.object : undefined;
@@ -129,20 +138,23 @@ export class PlantScene {
       if (!(o instanceof T.Mesh || o instanceof T.Line)) return;
       const materials = Array.isArray(o.material) ? o.material : [o.material];
       for (const m of materials) {
+        // Context needs outlines only; avoid shading thousands of nearly invisible faces.
+        m.visible = weight >= 0.12 || !(o instanceof T.Mesh);
         m.userData.fullOpacity ??= m.opacity;
         m.opacity =
           m.userData.fullOpacity *
           (o instanceof T.Mesh ? weight * weight : weight);
-        if (m.transparent !== m.opacity < 1) {
+        if (m.transparent !== (m.opacity < 1)) {
           m.transparent = m.opacity < 1;
           m.needsUpdate = true;
         }
-        m.depthWrite = m.opacity >= 0.99;
+        m.depthWrite = m.opacity >= 0.99 && !m.userData.transport;
       }
     });
   }
   /** World-space representative of the selected child, never an arbitrary camera reset. */
   anchor(part: Part): T.Sphere {
+    if (this.picked?.id === part.id) return this.picked.sphere.clone();
     const source = part.parent
       ? this.layers.get(part.parent.id)?.object
       : this.groups.get(part.id as EquipmentId);
@@ -174,8 +186,11 @@ export class PlantScene {
   animateNavigation(now: number) {
     const f = this.flight;
     if (!f) return;
-    const t = Math.min(1, (now - f.start) / (this.reduced ? 120 : 850));
-    const eased = t * t * (3 - 2 * t);
+    const t = Math.min(1, (now - f.start) / (this.reduced ? 120 : 1500));
+    const smooth = (v: number) => {const x = T.MathUtils.clamp(v, 0, 1); return x * x * (3 - 2 * x);};
+    // First separate the boundary; then travel through it. Reverse on ascent.
+    const eased = smooth(f.descending ? (t - 0.12) / 0.88 : t / 0.85);
+    for (const [object, [from, to]] of f.openings) openSection(object, this.reduced ? to : T.MathUtils.lerp(from, to, smooth(t / 0.65)));
     // Zoom interpolates in log space so changes of scale keep a steady perceived speed.
     this.setView(
       this.reduced
@@ -196,7 +211,7 @@ export class PlantScene {
     for (const [object, weight] of f.destinations) {
       this.fadeObject(
         object,
-        T.MathUtils.lerp(f.weights.get(object) ?? 0, weight, eased),
+        T.MathUtils.lerp(f.weights.get(object) ?? 0, weight, smooth(f.descending ? (t - 0.18) / 0.75 : t)),
       );
     }
     this.render();
@@ -297,6 +312,8 @@ export class PlantScene {
       if (!(object instanceof T.Light)) this.plantRoot.add(object);
     this.scene.add(this.plantRoot, this.detailRoot);
     this.orbit.addEventListener("change", () => this.render());
+    for (const shell of this.shells) opens(shell, [1.15, 0.25, 0.35], [0, 0, -0.08]);
+    for (const lid of this.lids) opens(lid.object, [0, lid.offset * 1.4, 0]);
     this.setTransparency(true);
     this.highlight("cooling");
     this.fadeObject(this.plantRoot, 1);
@@ -327,6 +344,8 @@ export class PlantScene {
         ];
         for (const hit of ordered) {
           if (hit.object.userData.child) {
+            const picked = hit.object.userData.pickGroup ?? hit.object;
+            this.picked = { id: hit.object.userData.child, sphere: pickedSphere(picked, picked === hit.object ? hit.instanceId : undefined) };
             this.onDrill(hit.object.userData.child);
             break;
           }
@@ -356,11 +375,13 @@ export class PlantScene {
         : [...this.groups.values()];
       const hits = this.ray.intersectObjects(objects, true);
       let id: string | undefined;
+      let picked: T.Object3D | undefined;
       for (const hit of hits) {
         let o: T.Object3D | null = hit.object;
         if (this.detail) {
           if (o.userData.child) {
             id = o.userData.child;
+            picked = o.userData.pickGroup ?? o;
             break;
           }
         } else {
@@ -371,7 +392,7 @@ export class PlantScene {
           }
         }
       }
-      this.previewPart(id);
+      this.previewPart(id, picked);
     });
     this.renderer.domElement.addEventListener("pointerleave", () =>
       this.previewPart(),
@@ -952,7 +973,8 @@ export class PlantScene {
       const old = this.layers.get(previous.id);
       if (old && !this.flight) old.view = from;
     } else if (!this.flight) this.plantView = from;
-    for (const label of this.detailLabels) label.remove();
+    for (const label of [...this.detailLabels, ...this.annotations]) label.remove();
+    this.annotations = [];
     this.detailLabels = [];
     // Build missing ancestors in order, keeping each child inside its parent coordinates.
     const path: Part[] = [];
@@ -984,11 +1006,25 @@ export class PlantScene {
         if (o instanceof T.Mesh)
           o.userData.baseOpacity = (o.material as T.Material).opacity;
       });
+      const interior = new Interior(p);
+      mesh.add(interior.object);
+      if (this.lastState && this.lastControls) interior.update(this.lastState, this.lastControls, 0, this.reduced);
       this.detailRoot.add(object);
-      this.layers.set(p.id, { object, center: anchor.center.clone(), radius });
+      this.layers.set(p.id, { object, center: anchor.center.clone(), radius, interior });
       this.fadeObject(object, 0);
     }
+    this.picked = undefined;
     this.detail = part;
+    const active = this.activeObject();
+    if (part && active) {
+      const interior = this.layers.get(part.id)!.interior;
+      interior.notes.forEach(note => {
+        const label = document.createElement('div'); label.className = 'flow-note';
+        const title = document.createElement('span'); title.textContent = tr(note.text, this.language);
+        const value = document.createElement('strong');
+        label.append(title, value); this.host.append(label); this.annotations.push(label);
+      });
+    }
     part?.children.forEach((child) => {
       const label = document.createElement("button");
       label.className = "detail-label scene-label";
@@ -1021,17 +1057,21 @@ export class PlantScene {
       this.detailRadius = layer.radius;
     }
     const destinations = new Map<T.Object3D, number>();
-    destinations.set(this.plantRoot, part ? (part.parent ? 0 : 0.035) : 1);
+    destinations.set(this.plantRoot, part ? (part.parent ? 0 : 0.055) : 1);
     for (const [id, l] of this.layers)
       destinations.set(
         l.object,
-        id === part?.id ? 1 : id === part?.parent?.id ? 0.045 : 0,
+        id === part?.id ? 1 : id === part?.parent?.id ? 0.085 : 0,
       );
-    this.applyDetailStyle();
+    this.applyDetailStyle(false);
+    const openings = new Map<T.Object3D, [number, number]>();
+    for (const [id, l] of this.layers) openings.set(l.object, [l.object.userData.openAmount ?? 0, id === part?.id ? (this.transparent ? 0.95 : 0) + (this.exploded ? 0.65 : 0) : 1.4]);
+    for (const [id, group] of this.groups) openings.set(group, [group.userData.openAmount ?? 0, part?.equipment === id ? 1 : this.exploded ? 0.7 : 0]);
     this.weights.forEach((w, o) => this.fadeObject(o, w));
     if (immediate) {
       this.flight = undefined;
       this.setView(to);
+      openings.forEach(([_, to], o) => openSection(o, to));
       destinations.forEach((w, o) => this.fadeObject(o, w));
       this.pruneLayers();
       this.orbit.enabled = true;
@@ -1042,19 +1082,26 @@ export class PlantScene {
         to,
         weights: new Map(this.weights),
         destinations,
+        openings,
+        descending: !!part && (!previous || part.id.startsWith(previous.id + "/")),
       };
       this.orbit.enabled = false;
       this.host.setAttribute("aria-busy", "true");
     }
     this.render();
   }
-  applyDetailStyle() {
+  applyDetailStyle(open = true) {
     const root = this.activeObject()?.children[0];
     if (!root) return;
-    root.children.forEach((child) => {
-      const base = child.userData.basePosition as T.Vector3 | undefined;
-      if (base)
-        child.position.copy(base).multiplyScalar(this.exploded ? 1.35 : 1);
+    if (open) openSection(this.activeObject()!, (this.transparent ? 0.95 : 0) + (this.exploded ? 0.65 : 0));
+    const interior = this.detail && this.layers.get(this.detail.id)?.interior;
+    interior?.object.traverse(o => {
+      if (o instanceof T.Mesh || o instanceof T.Line) {
+        const material = o.material as T.Material;
+        material.depthTest = !this.transparent;
+        material.depthWrite = false;
+        o.renderOrder = this.transparent ? 4 : 0;
+      }
     });
     root.traverse((o) => {
       if (o instanceof T.Mesh && o.userData.baseOpacity < 1) {
@@ -1068,6 +1115,8 @@ export class PlantScene {
     });
   }
   update(s: State, c: Controls, dt: number) {
+    this.lastState = s; this.lastControls = c;
+    for (const [id, layer] of this.layers) if (id === this.detail?.id) layer.interior.update(s, c, dt, this.reduced);
     const r = rates(s, c);
     this.rods.position.y = 1.7 + (s.fission / 1200) * 0.7;
     if (!this.reduced && dt > 0) {
@@ -1084,6 +1133,11 @@ export class PlantScene {
       }
       const obj = this.activeObject()?.children[0];
       if (obj && this.detail) {
+        obj.traverse(o => {
+          if (o.userData.spin === 'shaft') o.rotateY(rpm(s) / 600 * dt);
+          if (o.userData.spin === 'cooling') o.rotateY(s.coolingFlow * 3 * dt);
+          if (o.userData.spin === 'pump') o.rotation.y += (this.detail!.equipment === 'primary' ? s.primaryFlow : s.feedFlow) * 3 * dt;
+        });
         const kind = this.detail.kind;
         if (["rotor", "shaft", "impeller", "fan"].includes(kind)) {
           const equipment = this.detail.equipment;
@@ -1122,6 +1176,17 @@ export class PlantScene {
     const w = this.host.clientWidth,
       h = this.host.clientHeight;
     const occupied: { x: number; y: number; width: number }[] = [];
+    const layer = this.detail && this.layers.get(this.detail.id);
+    this.annotations.forEach((label, i) => {
+      if (!layer) return;
+      const note = layer.interior.notes[i];
+      const position = layer.interior.object.localToWorld(new T.Vector3(...note.at)).project(this.camera);
+      label.hidden = !!this.flight || position.z < -1 || position.z > 1;
+      label.style.left = `${T.MathUtils.clamp((position.x + 1) * w / 2, 100, w - 100)}px`;
+      label.style.top = `${T.MathUtils.clamp((1 - position.y) * h / 2, 70, h - 100)}px`;
+      label.children[0].textContent = tr(note.text, this.language);
+      if (this.lastState && this.lastControls) label.children[1].textContent = annotationValue(note, this.lastState, this.lastControls);
+    });
     for (const [id, label] of this.labels) {
       const pos = new T.Vector3(...positions[id]);
       pos.y =

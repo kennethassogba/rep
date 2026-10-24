@@ -1,8 +1,9 @@
 import * as T from 'three';
 import type { Kind, Part } from './parts';
 import { inkMaterial } from './ink.ts';
+import { opens } from './section.ts';
 const ink = 0x252a35,
-  paper = 0xf3f1ed,
+  paper = 0xf1f4fa,
   blue = 0x5b80c9,
   hot = 0xcf725b,
   gold = 0xd4a54e;
@@ -63,7 +64,7 @@ function ring(g: T.Group, r: number, p: V, color = ink, t = 0.025) {
 }
 function pipe(g: T.Group, points: V[], r = 0.09, color = hot) {
   const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(...p)));
-  return solid(g, new T.TubeGeometry(curve, 48, r, 8, false), color);
+  return solid(g, new T.TubeGeometry(curve, 48, r, 8, false), color, [0, 0, 0], r < 0.1 ? 0.45 : 1);
 }
 function hatch(g: T.Group, w: number, h: number, z: number) {
   for (let x = -w / 2; x < w / 2; x += 0.18) {
@@ -79,39 +80,121 @@ function hatch(g: T.Group, w: number, h: number, z: number) {
     );
   }
 }
+function bladeGeometry(fan: boolean) {
+  // A swept, tapered airfoil, lofted along its span. Counts and profile are illustrative.
+  const section = [[-0.12, -0.035], [-0.04, -0.065], [0.13, -0.03], [0.2, 0.012], [0.035, 0.055], [-0.12, 0.02]];
+  const positions: number[] = [], indices: number[] = [];
+  const rows = 8, n = section.length;
+  for (let j = 0; j <= rows; j++) {
+    const u = j / rows, angle = -0.25 + u * 0.55, taper = 1 - u * 0.28;
+    for (const [x, y] of section) {
+      const chord = x * taper * (fan ? 2.8 : 1.6), height = y * (fan ? 1 : 1.5);
+      positions.push(chord * Math.cos(angle) - height * Math.sin(angle) + u * u * 0.16,
+        chord * Math.sin(angle) + height * Math.cos(angle), 0.36 + u * 0.91);
+    }
+  }
+  for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) {
+    const a = j * n + i, b = j * n + (i + 1) % n;
+    indices.push(a, b, a + n, b, b + n, a + n);
+  }
+  for (let i = 1; i < n - 1; i++) indices.push(0, i + 1, i, rows * n, rows * n + i, rows * n + i + 1);
+  const geometry = new T.BufferGeometry();
+  geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices); geometry.computeVertexNormals();
+  return geometry;
+}
 function rotor(g: T.Group, fan = false) {
   cyl(g, 0.38, 0.4, [0, 0, 0], ink);
-  for (let i = 0; i < (fan ? 6 : 12); i++) {
-    const a = (i / (fan ? 6 : 12)) * Math.PI * 2;
-    const b = box(
-      g,
-      [fan ? 0.7 : 0.34, 0.1, 1.1],
-      [Math.sin(a) * 0.75, 0.02, Math.cos(a) * 0.75],
-      fan ? blue : gold,
-    );
-    b.rotation.y = a + 0.35;
+  const count = fan ? 6 : 18;
+  for (let i = 0; i < count; i++) {
+    const blade = solid(g, bladeGeometry(fan), fan ? blue : gold);
+    blade.rotation.y = i / count * Math.PI * 2;
+    blade.userData.blade = true;
   }
-  ring(g, 1.25, [0, -0.13, 0]);
+  ring(g, 1.27, [0, -0.08, 0], ink, 0.018);
+  ring(g, 0.4, [0, 0.21, 0], paper, 0.035);
+}
+/** Two thick sections move apart, retaining the physical boundary during a dive. */
+function casing(g: T.Group, radius: number, height: number, horizontal = false, alpha = 0.82) {
+  const frame = new T.Group();
+  if (horizontal) frame.rotation.z = Math.PI / 2;
+  g.add(frame);
+  for (let i = 0; i < 2; i++) {
+    const half = new T.Group();
+    frame.add(half);
+    const start = i * Math.PI;
+    solid(half, new T.CylinderGeometry(radius, radius, height, 40, 1, true, start, Math.PI), paper, [0, 0, 0], alpha);
+    solid(half, new T.CylinderGeometry(radius - 0.09, radius - 0.09, height, 40, 1, true, start, Math.PI), 0xb6c7e2, [0, 0, 0], alpha);
+    for (const y of [-height / 2, height / 2]) {
+      const rim = solid(half, new T.RingGeometry(radius - 0.09, radius, 40, 1, start, Math.PI), hot, [0, y, 0]);
+      rim.rotation.x = Math.PI / 2;
+    }
+    for (const z of [-radius + 0.04, radius - 0.04]) box(half, [0.07, height, 0.09], [0, 0, z], hot);
+    opens(half, [i === 0 ? radius * 0.8 : -radius * 0.8, 0, 0], [0, 0, i === 0 ? -0.12 : 0.12]);
+  }
+  return frame;
+}
+function fuelAssembly(g: T.Group, span: number, length: number, n = 7) {
+  const geometry = new T.CylinderGeometry(span / n * 0.29, span / n * 0.29, length, 10), pose = new T.Object3D();
+  // Set count explicitly: one draw call for the whole lattice.
+  const lattice = new T.InstancedMesh(geometry, inkMaterial({color: gold}), n * n);
+  let i = 0;
+  for (let x = 0; x < n; x++) for (let z = 0; z < n; z++) {
+    pose.position.set((x - (n - 1) / 2) * span / n, 0, (z - (n - 1) / 2) * span / n);
+    pose.updateMatrix(); lattice.setMatrixAt(i++, pose.matrix);
+  }
+  g.add(lattice);
+  for (const y of [-0.43, -0.15, 0.15, 0.43]) {
+    for (const z of [-span / 2, span / 2]) box(g, [span, 0.06, 0.025], [0, y * length, z]);
+    for (const x of [-span / 2, span / 2]) box(g, [0.025, 0.06, span], [x, y * length, 0]);
+  }
+  return lattice;
+}
+function steamGenerator(g: T.Group) {
+  casing(g, 1.5, 4.3);
+  const head = new T.Group(); g.add(head); head.position.y = 2.15;
+  const dome = solid(head, new T.SphereGeometry(1.5, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), paper);
+  dome.scale.y = 0.5;
+  ring(head, 1.52, [0, 0, 0], ink, 0.05);
+  opens(head, [0, 1.2, -0.3]);
+  for (const z of [-0.45, 0, 0.45]) for (const x of [-0.65, 0, 0.65]) {
+    pipe(g, [[x - 0.13, -1.9, z], [x - 0.13, 0.9, z], [x, 1.35, z], [x + 0.13, 0.9, z], [x + 0.13, -1.9, z]], 0.065, hot);
+  }
+  cyl(g, 1.3, 0.14, [0, -1.95, 0], paper);
+  for (const y of [-1.1, -0.3, 0.5]) ring(g, 1.2, [0, y, 0], paper, 0.075);
+  for (const x of [-0.7, 0.7]) {
+    const nozzle = cyl(g, 0.25, 0.8, [x, -2.4, 0], x < 0 ? hot : blue);
+    nozzle.userData.port = 'primary';
+  }
+  pipe(g, [[1.2, -1.2, 0], [1.8, -1.2, 0], [2.2, -1.2, 0]], 0.18, blue);
+  pipe(g, [[0, 2.1, 0], [0, 2.7, 0], [0.8, 2.8, 0]], 0.2, gold);
+  for (let i = 0; i < 10; i++) {
+    const a = i / 10 * Math.PI * 2;
+    const separator = cyl(g, 0.12, 0.45, [Math.sin(a) * 0.9, 1.7, Math.cos(a) * 0.9]);
+    separator.userData.separator = true;
+  }
 }
 function build(kind: Kind, g: T.Group) {
   switch (kind) {
     case 'vessel':
     case 'pressurizer': {
-      cyl(g, 1.55, 4.1, [0, 0, 0], 0xc7d0df, 0.24);
+      casing(g, 1.55, 4.1);
+      const head = new T.Group(); g.add(head);
       ring(g, 1.58, [0, 2.1, 0]);
       ring(g, 1.58, [0, -2.1, 0]);
       const cap = solid(
-        g,
+        head,
         new T.SphereGeometry(1.55, 30, 16, 0, Math.PI * 2, 0, Math.PI / 2),
         paper,
         [0, 2.6, 0],
       );
       cap.scale.y = 0.55;
-      cyl(g, 1.7, 0.15, [0, 2.6, 0]);
+      cyl(head, 1.7, 0.15, [0, 2.6, 0]);
       for (let i = 0; i < 16; i++) {
         const a = (i / 16) * Math.PI * 2;
-        cyl(g, 0.07, 0.15, [1.55 * Math.cos(a), 2.75, 1.55 * Math.sin(a)], ink);
+        cyl(head, 0.07, 0.15, [1.55 * Math.cos(a), 2.75, 1.55 * Math.sin(a)], ink);
       }
+      opens(head, [0, 1.3, -0.3]);
       if (kind === 'pressurizer') {
         cyl(g, 1.33, 1.3, [0, -0.9, 0], blue, 0.4);
         for (let x = -0.8; x <= 0.8; x += 0.4)
@@ -126,17 +209,13 @@ function build(kind: Kind, g: T.Group) {
             0.045,
             gold,
           );
-      } else
-        for (let x = -1; x <= 1; x++)
-          for (let z = -1; z <= 1; z++) {
-            const a = new T.Group();
-            a.position.set(x * 0.72, -0.4, z * 0.72);
-            a.scale.set(0.32, 0.65, 0.32);
-            g.add(a);
-            for (let i = -1; i <= 1; i++)
-              for (let j = -1; j <= 1; j++) cyl(a, 0.13, 3.6, [i * 0.5, 0, j * 0.5], gold);
-            for (const y of [-1.65, -0.5, 0.5, 1.65]) box(a, [1.6, 0.1, 1.6], [0, y, 0]);
-          }
+      } else {
+        for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) {
+          const assembly = new T.Group(); assembly.position.set(x * 0.68, -0.25, z * 0.68); g.add(assembly);
+          fuelAssembly(assembly, 0.59, 2.65, 5);
+        }
+        for (const y of [-1.72, 1.2]) ring(g, 1.2, [0, y, 0], paper, 0.08);
+      }
       pipe(
         g,
         [
@@ -160,14 +239,11 @@ function build(kind: Kind, g: T.Group) {
       break;
     }
     case 'core': {
-      for (let x = -2; x <= 2; x++)
-        for (let z = -2; z <= 2; z++) {
-          if (Math.abs(x) + Math.abs(z) > 3) continue;
-          const block = box(g, [0.54, 2.5, 0.54], [x * 0.62, 0, z * 0.62], gold);
-          for (let i = 0; i < 3; i++)
-            box(g, [0.56, 0.07, 0.56], [x * 0.62, -0.9 + i * 0.9, z * 0.62], paper);
-          block.userData.copy = true;
-        }
+      for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) {
+        if (Math.abs(x) + Math.abs(z) > 3) continue;
+        const assembly = new T.Group(); assembly.position.set(x * 0.62, 0, z * 0.62); g.add(assembly);
+        fuelAssembly(assembly, 0.53, 2.5, 7);
+      }
       ring(g, 2, [0, -1.4, 0]);
       break;
     }
@@ -182,11 +258,11 @@ function build(kind: Kind, g: T.Group) {
         }
       }
       box(g, [1.95, 0.18, 1.95], [0, -2.2, 0]);
-      box(g, [1.95, 0.18, 1.95], [0, 2.2, 0]);
+      opens(box(g, [1.95, 0.18, 1.95], [0, 2.2, 0]), [0, 1.2, -0.15]);
       break;
     }
     case 'rod': {
-      cyl(g, 0.42, 5.6, [0, 0, 0], paper, 0.17);
+      casing(g, 0.42, 5.6, false, 0.9);
       for (let i = 0; i < 17; i++) {
         cyl(g, 0.32, 0.23, [0, -2.3 + i * 0.25, 0], 0x7d7b84);
         ring(g, 0.32, [0, -2.42 + i * 0.25, 0], ink, 0.012);
@@ -194,33 +270,11 @@ function build(kind: Kind, g: T.Group) {
       for (let i = 0; i < 9; i++) ring(g, 0.26, [0, 2 + i * 0.065, 0], ink, 0.02);
       cyl(g, 0.43, 0.16, [0, -2.9, 0]);
       cyl(g, 0.43, 0.16, [0, 2.9, 0]);
-      // Enlarged radial cutaway: ceramic, gas gap, then cladding.
-      const section = new T.Group();
-      section.position.set(1.7, -0.7, 0);
-      section.rotation.x = 0.3;
-      g.add(section);
-      const disc = solid(section, new T.CircleGeometry(0.58, 40), 0x8b8990);
-      disc.rotation.x = -Math.PI / 2;
-      const wall = solid(section, new T.RingGeometry(0.7, 0.83, 40), blue);
-      wall.rotation.x = -Math.PI / 2;
-      ring(section, 0.58, [0, 0.01, 0]);
-      ring(section, 0.7, [0, 0.01, 0]);
-      ring(section, 0.83, [0, 0.01, 0]);
-      g.add(
-        new T.Line(
-          new T.BufferGeometry().setFromPoints([
-            new T.Vector3(0.42, -0.7, 0),
-            new T.Vector3(0.75, -0.7, 0),
-            new T.Vector3(0.87, -0.7, 0),
-          ]),
-          new T.LineDashedMaterial({ color: ink, dashSize: 0.08, gapSize: 0.04 }),
-        ),
-      );
       break;
     }
     case 'pellet': {
-      cyl(g, 1.25, 1.9, [0, 0, 0], 0x8b8990);
-      cyl(g, 1.02, 0.015, [0, 0.955, 0], 0xa5a3a7);
+      const profile = [[0, -0.83], [0.95, -0.83], [1.12, -0.95], [1.22, -0.86], [1.25, -0.76], [1.25, 0.76], [1.22, 0.86], [1.12, 0.95], [0.95, 0.83], [0, 0.83]].map(([r, y]) => new T.Vector2(r, y));
+      solid(g, new T.LatheGeometry(profile, 64), 0x858896);
       ring(g, 1.24, [0, 0.96, 0]);
       ring(g, 1.24, [0, -0.96, 0]);
       for (let i = 0; i < 26; i++) {
@@ -355,10 +409,10 @@ function build(kind: Kind, g: T.Group) {
       break;
     }
     case 'pump': {
-      cyl(g, 1.3, 0.7, [0, -0.4, 0], paper, 0.15);
+      casing(g, 1.3, 0.7);
       const wheel = new T.Group();
       g.add(wheel);
-      rotor(wheel);
+      rotor(wheel); wheel.userData.spin = 'pump';
       cyl(g, 0.15, 2, [0, 1, 0], ink);
       pipe(
         g,
@@ -424,12 +478,7 @@ function build(kind: Kind, g: T.Group) {
         );
         b.rotation.x = -a;
       }
-      const shell = solid(
-        g,
-        new T.CylinderGeometry(1.35, 1.35, 3.1, 36, 1, true, 0, Math.PI * 1.4),
-        paper,
-      );
-      shell.rotation.z = Math.PI / 2;
+      casing(g, 1.35, 3.1, true);
       box(g, [3.5, 0.2, 2.8], [0, -1.6, 0]);
       break;
     }
@@ -486,6 +535,7 @@ function build(kind: Kind, g: T.Group) {
     case 'stage': {
       const axis = cyl(g, 0.14, 5, [0, 0, 0], ink);
       axis.rotation.z = Math.PI / 2;
+      if (kind === 'turbine') casing(g, 1.55, 4.1, true);
       for (let j = 0; j < (kind === 'stage' ? 2 : 6); j++) {
         const disk = new T.Group();
         disk.position.x = kind === 'stage' ? -0.7 + j * 1.4 : -1.7 + j * 0.65;
@@ -493,12 +543,15 @@ function build(kind: Kind, g: T.Group) {
         disk.scale.setScalar(kind === 'stage' ? 1 : 0.65 + j * 0.08);
         g.add(disk);
         rotor(disk);
+        if (kind === 'turbine' || j === 1) disk.userData.spin = 'shaft';
       }
       break;
     }
     case 'condenser':
     case 'cooling': {
       box(g, [4, 0.15, 2.6], [0, -1.3, 0]);
+      opens(box(g, [4, 0.12, 2.6], [0, 1.3, 0]), [0, 1.1, -0.3], [0.1, 0, 0]);
+      opens(box(g, [4, 2.6, 0.12], [0, 0, 1.3], paper, 0.7), [0, 0, 0.9]);
       box(g, [0.15, 2.4, 2.6], [-2, 0, 0]);
       box(g, [0.15, 2.4, 2.6], [2, 0, 0]);
       for (let y = -0.8; y <= 0.8; y += 0.4)
@@ -518,6 +571,7 @@ function build(kind: Kind, g: T.Group) {
         f.position.y = 1.5;
         g.add(f);
         rotor(f, true);
+        f.userData.fan = true; f.userData.spin = 'cooling';
       }
       break;
     }
@@ -555,7 +609,12 @@ function build(kind: Kind, g: T.Group) {
 }
 export function buildDetail(part: Part) {
   const root = new T.Group();
-  if (part.id.endsWith('/ceramic') || part.id.endsWith('/grain')) {
+  if (part.kind === 'bundle' && ['condenser', 'cooling'].includes(part.equipment)) {
+    for (const y of [-0.8, -0.4, 0, 0.4, 0.8]) for (const z of [-0.8, -0.4, 0, 0.4, 0.8])
+      pipe(root, [[-1.9, y, z], [1.9, y, z]], 0.055, blue);
+    for (const x of [-2, 2]) box(root, [0.12, 2.1, 2.1], [x, 0, 0], paper, 0.4);
+  } else if (part.id === 'steam') steamGenerator(root);
+  else if (part.id.endsWith('/ceramic') || part.id.endsWith('/grain')) {
     const n = part.id.endsWith('/grain') ? 1 : 17;
     for (let i = 0; i < n; i++) {
       const a = i * 2.399;
@@ -580,6 +639,9 @@ export function buildDetail(part: Part) {
     build('coil', c);
   } else build(part.kind, root);
   const child = (key: string) => part.children.find((p) => p.id.endsWith('/' + key))?.id;
+  if (part.kind === 'core' && !part.id.endsWith('/ceramic')) {
+    root.children.filter(o => o instanceof T.Group).forEach(o => {o.userData.child = child('assembly'); o.traverse(m => {if (m instanceof T.Mesh) m.userData.pickGroup = o;});});
+  }
   root.traverse((o) => {
     if (!(o instanceof T.Mesh)) return;
     const geo = o.geometry,
@@ -598,7 +660,7 @@ export function buildDetail(part: Part) {
     }
     if (part.kind === 'bundle') target = geo instanceof T.TubeGeometry ? child('tube') : undefined;
     if (part.kind === 'impeller' || part.kind === 'fan')
-      target = geo instanceof T.BoxGeometry ? child('blade') : undefined;
+      target = o.userData.blade ? child('blade') : undefined;
     if (part.kind === 'coil') target = child('conductor');
     if (part.kind === 'pellet') target = child('ceramic');
     if (part.id.endsWith('/ceramic')) target = child('grain');
@@ -614,11 +676,16 @@ export function buildDetail(part: Part) {
     }
     if (part.kind === 'turbine')
       target = geo instanceof T.CylinderGeometry ? child('shaft') : child('stage');
-    if (part.kind === 'stage' && geo instanceof T.BoxGeometry)
+    if (part.kind === 'stage' && o.userData.blade)
       target = (o.parent?.position.x ?? 0) > 0 ? child('moving') : child('fixed');
     if (part.kind === 'wire') target = material.opacity < 1 ? child('insulation') : undefined;
     if (part.kind === 'tube')
       target = geo instanceof T.TubeGeometry ? child('inside') : child('wall');
+    if (part.id === 'steam') target = geo instanceof T.TubeGeometry ? child('bundle') : o.userData.separator ? child('separator') : child('secondary');
+    if (part.kind === 'pump') target = geo instanceof T.CylinderGeometry && geo.parameters.radiusTop < 0.2 ? (child('motor') ?? child('shaft')) : (child('hydraulics') ?? child('impeller'));
+    if (part.kind === 'pressurizer') target = geo instanceof T.TubeGeometry ? (geo.parameters.radius < 0.1 ? child('heaters') : child('surge')) : child('steamspace');
+    if (part.kind === 'condenser') target = geo instanceof T.TubeGeometry ? child('bundle') : Math.abs(o.position.x) > 1.8 ? child('waterbox') : o.position.y < -1 ? child('hotwell') : child('bundle');
+    if (part.kind === 'cooling') target = o.parent?.userData.fan ? child('fan') : child('exchanger');
     if (part.kind === 'vessel' && part.id === 'reactor')
       target =
         geo instanceof T.BoxGeometry ||

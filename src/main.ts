@@ -5,6 +5,7 @@ import { equipment, lessons, type EquipmentId } from "./content";
 import {
   advance,
   initialControls,
+  operatingExample,
   initialState,
   rates,
   rpm,
@@ -35,12 +36,14 @@ const fmt = (n: number, d = 0) =>
     maximumFractionDigits: d,
     minimumFractionDigits: d,
   });
-let state = initialState(),
-  controls = initialControls(),
+const example = operatingExample();
+let guidedStarted = false;
+let state = example.state,
+  controls = example.controls,
   selected: EquipmentId = "reactor";
 let mode: "guided" | "free" = "free",
   step = 0,
-  paused = true,
+  paused = false,
   speed = 1,
   acted = false,
   completed = false,
@@ -69,7 +72,7 @@ function mount() {
   $("app").innerHTML =
     `<a class="skip" href="#inspector">${L("Skip to controls", "Aller aux commandes")}</a>
  <header><a class="brand" href="./" aria-label="REP">REP</a><h1 class="sr-only">${L("Pressurized water reactor", "Réacteur à eau pressurisée")}</h1>
- <div class="header-controls"><button id="info-toggle" aria-controls="inspector" aria-expanded="${inspectorOpen}">${L("Details", "Détails")}</button><label class="sr-only" for="mode">${L("Mode", "Mode")}</label><select id="mode"><option value="guided">${L("Guided start", "Démarrage guidé")}</option><option value="free">${L("Explore", "Explorer")}</option></select><button id="model-open">${L("Model", "Modèle")}</button><label class="sr-only" for="language">${L("Language", "Langue")}</label><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select></div></header>
+ <div class="header-controls"><button id="info-toggle" aria-controls="inspector" aria-expanded="${inspectorOpen}">${L("Details", "Détails")}</button><label class="sr-only" for="mode">${L("Mode", "Mode")}</label><select id="mode"><option value="guided">${L("Cold start", "Démarrage à froid")}</option><option value="free">${L("Explore", "Explorer")}</option></select><button id="model-open">${L("Model", "Modèle")}</button><label class="sr-only" for="language">${L("Language", "Langue")}</label><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select></div></header>
  <main data-mode="${mode}"><section class="workspace" aria-label="${L("Interactive technical drawing", "Dessin technique interactif")}"><div class="drawing-top"><nav id="breadcrumbs" aria-label="${L("Exploration path", "Chemin d’exploration")}"></nav><div class="view-options"><button id="transparent" aria-pressed="${scene?.transparent ?? true}">${L("Cutaway", "Coupe")}</button><button id="explode" aria-pressed="${scene?.exploded ?? false}">${L("Explode", "Éclater")}</button><button id="labels" aria-pressed="${scene?.showLabels ?? false}">${L("Labels", "Repères")}</button></div></div>
  <div id="scene-slot"></div><div class="navigation"><div class="component-navigation"><div class="component-head"><label class="sr-only" for="equipment-picker">${L("Equipment", "Équipement")}</label><select id="equipment-picker">${roots.map((p) => `<option value="${p.id}">${tr(p.name, lang)}</option>`).join("")}</select></div><button id="level-up" class="level-up"></button><p id="part-path" hidden></p><h2 id="equipment-title"></h2><button id="open-component" class="open-component"></button><div id="children"></div><p id="leaf-note" hidden></p></div><section id="lesson"><div class="lesson-number"><span id="step-count"></span><button id="skip-guide">${L("Explore freely", "Explorer librement")} ↗</button></div><h2 id="lesson-title"></h2><p id="lesson-copy"></p><button id="lesson-action" class="primary-action"></button><p id="observation" role="status"></p><button id="next-step" hidden></button></section></div><div class="drawing-bottom"><span id="drawing-caption"></span><div class="camera-tools"><button id="rotate-left" aria-label="${L("Rotate left", "Tourner à gauche")}">↶</button><button id="rotate-right" aria-label="${L("Rotate right", "Tourner à droite")}">↷</button><button id="zoom-out" aria-label="${L("Zoom out", "Réduire le zoom")}">−</button><button id="zoom-in" aria-label="${L("Zoom in", "Augmenter le zoom")}">+</button><button id="camera-reset" aria-label="${L("Reset view", "Rétablir la vue")}">${cube}</button></div></div>
  <details class="measurements"><summary>${L("Measurements", "Mesures")}</summary><div class="telemetry" aria-label="${L("Plant measurements", "Mesures de la centrale")}"><div><span>${L("Core heat", "Chaleur du cœur")}</span><strong id="heat"></strong></div><div><span>${L("Primary water", "Eau primaire")}</span><strong id="primary-temp"></strong></div><div><span>${L("Secondary water", "Eau secondaire")}</span><strong id="secondary-temp"></strong></div><div><span>${L("Electrical output", "Production électrique")}</span><strong id="electric"></strong></div></div>
@@ -151,6 +154,7 @@ function mount() {
     acted = false;
     completed = false;
     mode = "guided";
+    guidedStarted = true;
     speed = 1;
     focused = undefined;
     selected = "reactor";
@@ -248,7 +252,7 @@ function renderCrumbs() {
     .querySelectorAll<HTMLButtonElement>("button")
     .forEach((b) => (b.onclick = () => drill(b.dataset.path || undefined)));
   $("drawing-caption").innerHTML = focused
-    ? L("Schematic scale", "Échelle schématique")
+    ? L("Schematic routes · equipment mean values", "Trajets schématiques · moyennes de l’équipement")
     : `<span class="legend"><i class="hot"></i>${L("Primary", "Primaire")}<i class="steam"></i>${L("Secondary", "Secondaire")}<i class="cold"></i>${L("Cooling", "Refroidissement")}</span>`;
 }
 function renderEquipment() {
@@ -370,6 +374,10 @@ function renderEquipment() {
 function setMode(m: "guided" | "free") {
   mode = m;
   if (m === "guided") {
+    if (!guidedStarted) {
+      state = initialState(); controls = initialControls(); guidedStarted = true;
+      setPaused(true); scene?.update(state, controls, 0);
+    }
     focused = undefined;
     selected = lessons[step].equipment;
     scene?.setDetail();

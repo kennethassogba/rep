@@ -90,3 +90,14 @@ Losses include primary and secondary heat leakage, shaft friction and generator 
 Nine trees contain 168 illustrated nodes. Rod counts, geometry and microstructure are representative, not construction drawings. Transparent housings and exploded spacing are explanatory. Fuel pellet/grain temperatures, tube-wall conduction profiles, mechanical stress, magnetic fields and detailed hydraulics are not solved. Values shown at deeper levels remain the parent equipment's mean values, explicitly labelled in Live values.
 
 Particles encode direction and relative flow, not molecule motion. Shaft animation is slowed for visibility. The operating-system reduced-motion preference stops these animations while retaining values and arrows. The cooling unit represents an ideal heat sink; it is not a detailed full-scale dry-cooler design.
+
+
+## Immersive sections
+
+Exploration initially uses `operatingExample()`: the same model advances from the cold initial state for 360 model seconds, with all pumps at 1, heat demand 0.65, valve 0.7 and electrical load connected. Its energy ledger is retained. The first selection of Cold start resets to the cold state; switching between exploration and an already started lesson preserves its progress.
+
+Split casings, lifted covers and section edges are explanatory drawing operations, not a disassembly procedure. The camera uses the selected mesh or instance transform. Successive models retain their parent's coordinates but are enlarged schematically; this is not nested CAD with engineering dimensions.
+
+Internal routes are prescribed curves, not CFD results. Primary, feed and cooling transport uses the corresponding model flow fraction; steam transport uses admitted steam mass. Heat arrows use core heat, signed exchanger transfer or heat rejection. Transfer arrows reverse if the secondary becomes hotter than the primary. Electricity loops indicate electrical power, not electrons or a computed magnetic field. There is no independent animation clock. Pause, zero source rates and reduced motion stop particle travel. Rotor motion is slowed for readability.
+
+With Cutaway enabled, routes are drawn through occluding surfaces for legibility. The route positions still distinguish fluid inside a tube from fluid outside. Rod cooling water stays outside the cladding. Pellet and microscopic fuel views show heat-transfer direction only. Primary particle colours indicate the direction of heating or cooling, not a resolved local temperature field. Callouts show the equipment's mean temperature or shaft speed. Pressure is imposed; local pressurizer circulation, spray and heater dynamics receive no invented animated flow.

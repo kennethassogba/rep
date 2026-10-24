@@ -8,9 +8,10 @@ English by default; French is available from the language menu. The simulation r
 
 ## Explore
 
-- Explore opens on the full drawing. Choose Guided start to run the energy cycle in five steps.
-- Click equipment in the drawing to enter it, then choose an internal part. The camera follows its position and keeps the parent as faint outlines. Use the back button, path or Escape to return.
+- Explore opens on a running plant computed from 360 model seconds of warm-up. Choose Cold start to run the energy cycle from 20 °C in five steps.
+- Click equipment in the drawing to enter it, then choose an internal part. Casings separate before the camera enters. It follows the picked physical instance and keeps the parent as faint outlines. Use the back button, path or Escape to return.
 - Nine equipment trees contain 168 nodes, with four to seven levels per tree. Geometry is schematic; repeated physical components share representative views.
+- Internal routes show primary water, steam, cooling water and heat crossing boundaries. Flow stops with the model; pause and reduced motion retain static direction cues.
 - Rotate, zoom, use cutaway and exploded views. Labels are optional.
 - Pause or change playback speed. Space controls playback outside form controls; Escape moves up one component level. Buttons and component lists provide keyboard alternatives to dragging and picking.
 - Open Details for the component role, controls and connections; open Measurements for plant values. Both stay closed while exploring unless requested.
