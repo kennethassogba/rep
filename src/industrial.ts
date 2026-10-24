@@ -6,14 +6,14 @@ import type { Route } from "./interior.ts";
 import type { Action } from "./startup.ts";
 export type V = [number, number, number];
 export const palette = {
-  enamel: 0xf1f2ee,
-  navy: 0x173a56,
-  orange: 0xde5d26,
-  steel: 0x9aaab5,
-  dark: 0x243139,
-  blue: 0x377da8,
-  copper: 0xad6a3e,
-  water: 0x6badd1,
+  enamel: 0xffd83d,
+  navy: 0x3455ed,
+  orange: 0xff6045,
+  steel: 0xb3d5ff,
+  dark: 0x262139,
+  blue: 0x008dde,
+  copper: 0xff80b8,
+  water: 0x29c9f0,
 };
 const materials = new Map<string, T.MeshStandardMaterial>();
 function material(color: number, metal = false, opacity = 1) {
@@ -23,8 +23,8 @@ function material(color: number, metal = false, opacity = 1) {
       key,
       new T.MeshStandardMaterial({
         color,
-        metalness: metal ? 0.72 : 0.12,
-        roughness: metal ? 0.38 : 0.52,
+        metalness: metal ? 0.12 : 0,
+        roughness: 0.78,
         transparent: opacity < 1,
         opacity,
         depthWrite: opacity === 1,
@@ -281,15 +281,6 @@ export function buildMachine(): Machine {
     equipment.set(id, g);
     return g;
   };
-  // A single enamel chassis carries the whole energy chain.
-  box(root, [16.9, 0.45, 10.2], [0.35, -0.35, 0.3], palette.navy, 0.23);
-  box(root, [16.65, 0.12, 9.95], [0.35, -0.07, 0.3], palette.enamel, 0.14);
-  for (const x of [-7.5, 8.1])
-    for (const z of [-3.9, 4.5])
-      cylinder(root, 0.3, 0.13, [x, -0.62, z], palette.dark);
-  for (const x of [-7.7, 8.3])
-    for (const z of [-4.3, 4.9])
-      cylinder(root, 0.08, 0.025, [x, 0.01, z], palette.dark);
   // Reactor pressure boundary and its removable crown.
   const reactor = group("reactor");
   for (const x of [-0.8, 0.8])
@@ -534,33 +525,6 @@ export function buildMachine(): Machine {
     torus(cooling, 0.65, 0.035, [x, 1.94, 0], palette.dark);
   }
   actuators.push(actuator(cooling, [1.22, 1.85, 0.65], "cooling"));
-  // Three physical dials set into the front edge, with needles driven by the model.
-  for (const [i, kind] of (
-    ["primary", "secondary", "electric"] as const
-  ).entries()) {
-    const dial = new T.Group();
-    dial.position.set(-0.85 + i * 1.5, 0.12, 4.75);
-    dial.rotation.x = 0.35;
-    root.add(dial);
-    cylinder(dial, 0.43, 0.1, [0, 0, 0], palette.dark);
-    cylinder(dial, 0.38, 0.025, [0, 0.07, 0], palette.enamel, false);
-    for (let j = 0; j < 17; j++) {
-      const a = -Math.PI * 0.75 + (j / 16) * Math.PI * 1.5;
-      const tick = box(
-        dial,
-        [0.018, 0.008, j % 4 === 0 ? 0.075 : 0.04],
-        [Math.sin(a) * 0.31, 0.09, Math.cos(a) * 0.31],
-        palette.dark,
-        0.002,
-      );
-      tick.rotation.y = a;
-    }
-    const needle = new T.Group();
-    dial.add(needle);
-    box(needle, [0.022, 0.018, 0.3], [0, 0.12, 0.13], palette.orange, 0.002);
-    cylinder(needle, 0.035, 0.025, [0, 0.12, 0], palette.dark);
-    gauges.push({ needle, kind });
-  }
   const routes: Route[] = [];
   const route = (points: V[], kind: Route["kind"], color: number, r = 0.13) => {
     tube(root, points, r, palette.steel, 0.45);

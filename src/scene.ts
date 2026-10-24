@@ -1,6 +1,7 @@
 import * as T from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { Playthings, type Addon } from "./playthings";
+import { journeyFrame, journeySpeed } from "./journey";
 import { buildMachine, palette, type Machine } from "./industrial";
 import { buildDetail } from "./detail";
 import { Interior } from "./interior";
@@ -36,6 +37,10 @@ export class MachineScene {
   renderer: T.WebGLRenderer;
   orbit: OrbitControls;
   machine: Machine;
+  toys: Playthings;
+  journey?: { progress: number; saved: View; entering: boolean };
+  traveller = new T.Group();
+  onJourneyEnd: () => void = () => {};
   flow: Interior;
   machineInteriors = new Map<string, Interior>();
   detailRoot = new T.Group();
@@ -59,6 +64,15 @@ export class MachineScene {
   }[] = [];
   lastState?: State;
   lastControls?: Controls;
+  private occluders = new Map<
+    T.Material,
+    { opacity: number; transparent: boolean; depthWrite: boolean }
+  >();
+  private lastOcclusion = 0;
+  private ghostMaterials = new Map<
+    T.Material,
+    { opacity: number; transparent: boolean; depthWrite: boolean }
+  >();
   private sectionTargets = new Map<T.Object3D, number>();
   private lastRender = 0;
   private dirty = true;
@@ -73,8 +87,8 @@ export class MachineScene {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     this.renderer.setClearColor(0xffffff);
     this.renderer.outputColorSpace = T.SRGBColorSpace;
-    this.renderer.toneMapping = T.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.35;
+    this.renderer.toneMapping = T.NoToneMapping;
+    this.renderer.toneMappingExposure = 1;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = T.PCFSoftShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
@@ -82,8 +96,8 @@ export class MachineScene {
     this.renderer.domElement.tabIndex = 0;
     host.prepend(this.renderer.domElement);
     this.scene.background = new T.Color(0xffffff);
-    this.scene.add(new T.HemisphereLight(0xffffff, 0x67717e, 2.2));
-    const key = new T.DirectionalLight(0xfff4e5, 4.1);
+    this.scene.add(new T.HemisphereLight(0xffffff, 0xb3c9ff, 1.8));
+    const key = new T.DirectionalLight(0xffffff, 2.2);
     key.position.set(-6, 15, 10);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -96,24 +110,71 @@ export class MachineScene {
     key.shadow.bias = -0.0003;
     key.shadow.normalBias = 0.025;
     this.scene.add(key);
-    const rim = new T.DirectionalLight(0xd9eaff, 1.7);
+    const rim = new T.DirectionalLight(0xe4eeff, 0.5);
     rim.position.set(8, 8, -7);
     this.scene.add(rim);
-    const pmrem = new T.PMREMGenerator(this.renderer),
-      room = new RoomEnvironment();
-    this.scene.environment = pmrem.fromScene(room, 0.04).texture;
-    room.dispose();
-    pmrem.dispose();
-    this.scene.environmentIntensity = 0.55;
     const ground = new T.Mesh(
       new T.PlaneGeometry(150, 150),
-      new T.ShadowMaterial({ opacity: 0.16 }),
+      new T.ShadowMaterial({ opacity: 0.07 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.71;
     ground.receiveShadow = true;
     this.scene.add(ground);
     this.machine = buildMachine();
+    this.toys = new Playthings(this.machine);
+    for (const g of this.machine.equipment.values()) this.addOutlines(g);
+    const drop = new T.Mesh(
+      new T.SphereGeometry(0.12, 16, 12),
+      new T.MeshBasicMaterial({
+        color: 0x008dde,
+        depthTest: false,
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    drop.scale.y = 1.35;
+    drop.renderOrder = 8;
+    this.traveller.add(drop);
+    for (const x of [-0.045, 0.045]) {
+      const eye = new T.Mesh(
+        new T.SphereGeometry(0.038, 8, 6),
+        new T.MeshBasicMaterial({
+          color: 0xffffff,
+          depthTest: false,
+          transparent: true,
+          depthWrite: false,
+        }),
+      );
+      eye.position.set(x, 0.025, 0.13);
+      eye.renderOrder = 9;
+      this.traveller.add(eye);
+      const pupil = new T.Mesh(
+        new T.SphereGeometry(0.018, 8, 6),
+        new T.MeshBasicMaterial({
+          color: palette.dark,
+          depthTest: false,
+          transparent: true,
+          depthWrite: false,
+        }),
+      );
+      pupil.position.set(x, 0.025, 0.165);
+      pupil.renderOrder = 10;
+      this.traveller.add(pupil);
+    }
+    const ring = new T.Mesh(
+      new T.TorusGeometry(0.19, 0.018, 6, 28),
+      new T.MeshBasicMaterial({
+        color: palette.dark,
+        depthTest: false,
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    ring.renderOrder = 8;
+    this.traveller.add(ring);
+    this.traveller.visible = false;
+    this.scene.add(this.traveller);
     this.scene.add(this.machine.root, this.detailRoot);
     this.flow = new Interior({ routes: this.machine.routes, notes: [] });
     this.machine.root.add(this.flow.object);
@@ -153,6 +214,7 @@ export class MachineScene {
     });
     this.renderer.domElement.addEventListener("pointerup", (e) => {
       if (
+        this.journey ||
         this.flight ||
         Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5
       )
@@ -172,7 +234,7 @@ export class MachineScene {
       }
     });
     this.renderer.domElement.addEventListener("pointermove", (e) => {
-      if (e.buttons || this.flight) return;
+      if (e.buttons || this.flight || this.journey) return;
       const hit = this.pick(e.clientX, e.clientY);
       this.highlight(hit?.object);
       this.renderer.domElement.style.cursor = hit?.action
@@ -274,7 +336,7 @@ export class MachineScene {
   ): View {
     const aspect = this.host.clientWidth / Math.max(1, this.host.clientHeight),
       distance =
-        (radius / Math.sin(T.MathUtils.degToRad(this.camera.fov / 2))) *
+        (radius / Math.sin(T.MathUtils.degToRad(34 / 2))) *
         Math.max(1, 1 / aspect) *
         1.1;
     return {
@@ -343,9 +405,9 @@ export class MachineScene {
       const edge = new T.LineSegments(
         new T.EdgesGeometry(m.geometry, 35),
         new T.LineBasicMaterial({
-          color: palette.navy,
+          color: palette.dark,
           transparent: true,
-          opacity: 0.1,
+          opacity: 0.62,
           depthWrite: false,
         }),
       );
@@ -372,8 +434,8 @@ export class MachineScene {
         const opacity = old.opacity < 0.5 ? old.opacity : 1;
         o.material = new T.MeshStandardMaterial({
           color,
-          metalness: color === palette.enamel ? 0.1 : 0.55,
-          roughness: 0.48,
+          metalness: 0.05,
+          roughness: 0.8,
           transparent: opacity < 1,
           opacity,
           depthWrite: opacity === 1,
@@ -383,12 +445,13 @@ export class MachineScene {
         o.receiveShadow = false;
         o.castShadow = false;
       } else if (o instanceof T.Line) {
-        (o.material as T.LineBasicMaterial).opacity = 0.12;
-        (o.material as T.LineBasicMaterial).color.setHex(palette.navy);
+        (o.material as T.LineBasicMaterial).opacity = 0.65;
+        (o.material as T.LineBasicMaterial).color.setHex(palette.dark);
       }
     });
   }
   setDetail(part?: Part) {
+    if (this.journey) this.stopJourney();
     if (this.detail?.id === part?.id) return;
     this.highlight();
     const previous = this.detail,
@@ -464,7 +527,7 @@ export class MachineScene {
     const to = layer
       ? (layer.view ?? this.frameView(layer.center, layer.radius, direction))
       : (this.overview ??
-        this.frameView(new T.Vector3(0.2, 1.2, 0.25), this.overviewRadius));
+        this.frameView(new T.Vector3(0.6, 1.5, 2.1), this.overviewRadius));
     const destinations = new Map<T.Object3D, number>();
     destinations.set(this.machine.root, part ? 0.045 : 1);
     for (const [id, l] of this.layers)
@@ -583,28 +646,34 @@ export class MachineScene {
     this.onProject();
   }
   get overviewRadius() {
-    return this.camera.aspect < 1 ? 9 : 8.3;
+    return this.host.clientWidth < 700 ? 6.8 : 6.6;
   }
   resize() {
     const w = this.host.clientWidth,
       h = this.host.clientHeight;
     if (!w || !h) return;
+    if (!this.journey) this.overview = undefined;
     this.camera.aspect = w / h;
     this.renderer.setSize(w, h);
+    if (this.journey) {
+      this.adaptClip();
+      this.dirty = true;
+      return;
+    }
     const layer = this.detail && this.layers.get(this.detail.id);
-    this.apply(
-      this.frameView(
-        layer ? layer.center : new T.Vector3(0.2, 1.2, 0.25),
-        layer ? layer.radius : this.overviewRadius,
-      ),
+    const view = this.frameView(
+      layer ? layer.center : new T.Vector3(0.6, 1.5, 2.1),
+      layer ? layer.radius : this.overviewRadius,
     );
+    if (this.flight) this.flight.to = view;
+    else this.apply(view);
     this.dirty = true;
     this.project();
   }
   resetView() {
     const l = this.detail && this.layers.get(this.detail.id);
     const to = this.frameView(
-      l ? l.center : new T.Vector3(0.2, 1.2, 0.25),
+      l ? l.center : new T.Vector3(0.6, 1.5, 2.1),
       l ? l.radius : this.overviewRadius,
     );
     this.flight = {
@@ -617,7 +686,7 @@ export class MachineScene {
     this.orbit.enabled = false;
   }
   rotate(angle: number) {
-    if (this.flight) return;
+    if (this.flight || this.journey) return;
     this.camera.position
       .sub(this.orbit.target)
       .applyAxisAngle(new T.Vector3(0, 1, 0), angle)
@@ -626,13 +695,185 @@ export class MachineScene {
     this.dirty = true;
   }
   zoom(factor: number) {
-    if (this.flight) return;
+    if (this.flight || this.journey) return;
     this.camera.position
       .sub(this.orbit.target)
       .multiplyScalar(T.MathUtils.clamp(factor, 0.7, 1.4))
       .add(this.orbit.target);
     this.orbit.update();
     this.dirty = true;
+  }
+  toggleAddon(id: Addon) {
+    const active = this.toys.toggle(id);
+    this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
+    return active;
+  }
+  startJourney() {
+    if (this.journey) return;
+    const saved = this.detail
+      ? (this.overview ?? this.capture())
+      : this.capture();
+    this.setDetail();
+    this.journey = { progress: 0, saved, entering: true };
+    this.setCutaway(true);
+    for (const g of this.machine.equipment.values())
+      this.sectionTargets.set(g, 1.2);
+    const sample = journeyFrame(0),
+      to = this.journeyView(sample.point, sample.tangent);
+    const destinations = new Map<T.Object3D, number>([[this.machine.root, 1]]);
+    for (const l of this.layers.values())
+      destinations.set(l.object, l.native ? 1 : 0);
+    this.flight = {
+      start: performance.now(),
+      from: this.capture(),
+      to,
+      weights: new Map(this.weights),
+      destinations,
+    };
+    this.orbit.enabled = false;
+    this.traveller.visible = true;
+    this.traveller.position.copy(sample.point);
+    this.dirty = true;
+  }
+  stopJourney() {
+    const j = this.journey;
+    if (!j) return;
+    this.journey = undefined;
+    this.traveller.visible = false;
+    for (const [m, v] of this.ghostMaterials) {
+      Object.assign(m, v);
+      m.needsUpdate = true;
+    }
+    this.ghostMaterials.clear();
+    this.restoreOccluders();
+    this.flight = {
+      start: performance.now(),
+      from: this.capture(),
+      to: j.saved,
+      weights: new Map(this.weights),
+      destinations: new Map(this.weights),
+    };
+    this.setSections();
+    this.dirty = true;
+    this.onJourneyEnd();
+  }
+  nextStation() {
+    if (!this.journey) return;
+    const stops = [0, 0.14, 0.27, 0.39, 0.48, 0.57, 0.68, 0.81, 0.93, 1];
+    this.journey.progress =
+      stops.find((p) => p > this.journey!.progress + 0.001) ?? 1;
+    this.dirty = true;
+    if (this.journey.progress === 1) this.stopJourney();
+  }
+  private journeyView(point: T.Vector3, tangent: T.Vector3): View {
+    const side = new T.Vector3(-tangent.z, 0, tangent.x).multiplyScalar(0.55);
+    return {
+      target: point.clone().addScaledVector(tangent, 0.32),
+      position: point
+        .clone()
+        .addScaledVector(tangent, -2.1)
+        .add(side)
+        .add(new T.Vector3(0, 0.85, 0)),
+    };
+  }
+  private restoreOccluders() {
+    for (const [m, v] of this.occluders) {
+      Object.assign(m, v);
+      m.needsUpdate = true;
+    }
+    this.occluders.clear();
+  }
+  private clearViewTo(point: T.Vector3) {
+    if (performance.now() - this.lastOcclusion < 120) return;
+    this.lastOcclusion = performance.now();
+    this.restoreOccluders();
+    const direction = point.clone().sub(this.camera.position),
+      distance = direction.length();
+    const ray = new T.Raycaster(
+      this.camera.position,
+      direction.normalize(),
+      0,
+      distance - 0.15,
+    );
+    for (const hit of ray.intersectObjects([this.machine.root], true)) {
+      if (
+        !(hit.object instanceof T.Mesh) ||
+        hit.object instanceof T.InstancedMesh
+      )
+        continue;
+      for (const m of Array.isArray(hit.object.material)
+        ? hit.object.material
+        : [hit.object.material]) {
+        if (
+          this.ghostMaterials.has(m) ||
+          this.occluders.has(m) ||
+          m.opacity < 0.2
+        )
+          continue;
+        this.occluders.set(m, {
+          opacity: m.opacity,
+          transparent: m.transparent,
+          depthWrite: m.depthWrite,
+        });
+        m.opacity = 0.04;
+        m.transparent = true;
+        m.depthWrite = false;
+        m.needsUpdate = true;
+      }
+    }
+  }
+  private advanceJourney(s: State, c: Controls, dt: number, wall: number) {
+    const j = this.journey!;
+    if (!this.ghostMaterials.size)
+      for (const g of this.machine.equipment.values())
+        g.traverse((o) => {
+          if (!o.userData.opening) return;
+          o.traverse((child) => {
+            if (child instanceof T.Mesh || child instanceof T.Line) {
+              for (const m of Array.isArray(child.material)
+                ? child.material
+                : [child.material]) {
+                if (this.ghostMaterials.has(m)) continue;
+                this.ghostMaterials.set(m, {
+                  opacity: m.opacity,
+                  transparent: m.transparent,
+                  depthWrite: m.depthWrite,
+                });
+                m.opacity = child instanceof T.Line ? 0.13 : 0.035;
+                m.transparent = true;
+                m.depthWrite = false;
+                m.needsUpdate = true;
+              }
+            }
+          });
+        });
+    if (!this.reduced)
+      j.progress = Math.min(
+        1,
+        j.progress + (dt / 90) * journeySpeed(j.progress, s, c),
+      );
+    const sample = journeyFrame(j.progress),
+      v = this.journeyView(sample.point, sample.tangent);
+    const e = this.reduced ? 1 : 1 - Math.exp(-wall * 4.5);
+    this.apply({
+      position: this.camera.position.clone().lerp(v.position, e),
+      target: this.orbit.target.clone().lerp(v.target, e),
+    });
+    this.clearViewTo(sample.point);
+    this.traveller.position.copy(sample.point);
+    this.traveller.quaternion.copy(this.camera.quaternion);
+    this.traveller.visible = sample.chapter !== "exchange";
+    const drop = this.traveller.children[0] as T.Mesh;
+    (drop.material as T.MeshBasicMaterial).color.setHex(
+      sample.chapter === "secondary" && sample.u < 0.65
+        ? palette.orange
+        : palette.blue,
+    );
+    drop.scale.setScalar(
+      sample.chapter === "secondary" && sample.u < 0.65 ? 1.35 : 1,
+    );
+    if (j.progress === 1) this.stopJourney();
   }
   update(s: State, c: Controls, dt: number, now: number) {
     this.lastState = s;
@@ -688,10 +929,27 @@ export class MachineScene {
       structural = true;
       if (t === 1) {
         this.flight = undefined;
-        this.orbit.enabled = true;
+        this.orbit.enabled = !this.journey;
+        if (this.journey) this.journey.entering = false;
         this.orbit.update();
         this.prune();
       }
+    }
+    if (
+      this.journey &&
+      !this.flight &&
+      (dt > 0 || (this.reduced && this.dirty))
+    ) {
+      this.advanceJourney(s, c, dt, wall);
+      this.dirty = true;
+    }
+    const targetFov = this.journey ? 62 : 34;
+    if (Math.abs(this.camera.fov - targetFov) > 0.01) {
+      this.camera.fov = this.reduced
+        ? targetFov
+        : T.MathUtils.lerp(this.camera.fov, targetFov, 1 - Math.exp(-wall * 3));
+      this.camera.updateProjectionMatrix();
+      this.dirty = true;
     }
     if (structural) {
       this.dirty = true;
@@ -701,6 +959,7 @@ export class MachineScene {
       const elapsed = this.modelElapsed;
       this.modelElapsed = 0;
       const r = rates(s, c);
+      this.toys.update(r.electric, elapsed, this.reduced);
       this.flow.update(s, c, elapsed, this.reduced);
       for (const interior of this.machineInteriors.values())
         interior.update(s, c, elapsed, this.reduced);

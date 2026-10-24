@@ -1,47 +1,49 @@
 # Validation
 
-Checked on 24 October 2026 for the industrial-machine rebuild. These are software and interface checks, not scientific qualification.
+Checked on 25 October 2026 for the five-switch game rebuild. These checks establish software behaviour, not scientific qualification.
 
-## Automated checks
+## Automated
 
-- `npm test`: 28 passing tests. Twelve check the physical model, four check the 168-node hierarchy and geometry, seven check internal transport and section behaviour, three check the new startup controls, and two check the physical plant and its native internal routes.
-- The startup test operates the five controls from a cold state, waits for physical prerequisites, and reaches electrical production without substituting a prepared state. It also checks that premature commands leave controls unchanged and that circulation can be restored at the liquid-model boundary.
-- Conservation, shutdown heat, pump-loss trips, cooling loss, pause, frame-step independence, finite geometry, picked-instance transforms and reversible opening poses are covered. This does not validate the equations against a real plant.
-- TypeScript and the Vite production build pass. The Three.js chunk is approximately 135 kB gzip; Vite reports its uncompressed size above the 500 kB advisory threshold. No frame-rate guarantee follows from this result.
-- Cloudflare static-asset packaging passes. `npm audit` reports zero vulnerabilities, including development dependencies, at the time checked.
+- 31 tests pass: 28 existing model, geometry, transport, section and startup tests; three new game and journey tests.
+- The game reaches 100 MW from a cold state by operating the five commands. The test does not set output or replace the state with a prepared example. Turning the generator off removes the win condition and brings back its startup instruction.
+- Premature actions preserve controls and identify a prerequisite. The guide changes when actual circulation is established.
+- The complete camera route is finite and position-continuous, including both sides of the heat-transfer handoff. Primary and secondary water endpoints are distinct. Zero flow stops travel.
+- Existing checks cover energy conservation, residual heat, pump and cooling losses, pause, frame-step independence, 168 finite detail models, reversible sections and picked-instance transforms.
+- TypeScript and the production build pass. The Three.js bundle is approximately 136 kB gzip; Vite still reports its uncompressed size above the 500 kB advisory threshold. The two transparent character PNGs total about 3.9 MB. No mobile-loading-time or frame-rate guarantee is claimed.
+- `npm audit --omit=dev` reports zero vulnerabilities. `git diff --check` passes.
 
-## Browser checks
+## Browser
 
-Checked in the Codex Chromium browser on Linux, at 1280 × 720/800 and 320 × 740.
+Inspected in the Codex Chromium browser on Linux at 1280 × 720, 390 × 844 and 320 × 780.
 
-- Completed the five-control startup in French and English. Observed steam becoming available after heating, shaft acceleration, electrical-load availability and nonzero output. A transient output peak after connecting the load comes from stored shaft energy; the model explicitly permits it.
-- A premature primary-pump command remained blocked and identified cooling/feed circulation as its prerequisite. Pause preserved the displayed power throughout nested exploration. Quarter speed and optional sound toggles changed state without console errors; acoustic accuracy is not claimed.
-- Opened the native reactor and generator. Navigated reactor → core → assembly → rod → pellet → ceramic → grain, and generator → stator. Verified Escape ascent, rapid successive selections, component lists and the information drawer.
-- Verified language switching, slider keyboard input and synchronized control values when opening the drawer. English is the default when no saved preference exists.
-- The 320 px layout has no horizontal document overflow. Physical controls become a five-button dock; playback and camera controls remain separate. The information drawer scrolls within the viewport.
-- Playback pictograms now update only when their state changes. Eight consecutive pause/resume clicks and a pause during a return flight passed after this fix. The rapidly changing power output is excluded from live announcements.
-- No browser warnings or errors appeared in the inspected session. Visual checks cover representative views, not every one of the 168 nodes.
+- Completed startup through the visible commands in English on desktop and French on mobile. Observed output above 100 MW, lit palace windows and the changed mission dialogue.
+- A cold heat command left the model unchanged and displayed the cooling prerequisite. The waiting instruction changed to an available next action after circulation or boiling.
+- Verified language switching without resetting the game, pause/resume, the tour's pause caption, continuous movement through the primary circuit, steam-generator and condenser chapters, and the return to the overview. The travel marker stays readable through transparent shells and camera occluders.
+- Added all three accessories. Confirmed eyes on the reactor, a baguette on the generator and a rotating coloured ball over the turbine. Each uses the same toggle for removal. The president button reveals the empty chair and restores the character on a second click. Disconnecting the generator after victory returns the reading to 0 MW and restores the connection instruction.
+- Navigated vessel → core → assembly → rod → pellet; tested Escape ascent and return to the whole plant. Earlier geometry tests still cover every detail node, but browser inspection is representative rather than exhaustive.
+- At 320 px, the document has no horizontal overflow. Startup, journey, quarter speed, pause and camera controls remain visible. The larger scene was reframed after testing revealed clipping and a narrow-screen overlap. Overview framing uses its own field of view, fixing a zoom error when returning from the wide-angle journey.
+- No warnings or errors appeared in the inspected browser console.
 
 ## Interface review
 
-Reviewed with better-interface and avoid-ai-writing: accessibility, colour, layout, typography, UI behaviour and copy.
+Applied better-interface and avoid-ai-writing. Original game jokes follow the user's explicit request for parody.
 
-| Severity | Location | Finding | Change | Reason |
-| --- | --- | --- | --- | --- |
-| High | Main workspace | Text and detached panels competed with the machine. | Full-viewport 3D, pictograms, numbered actuators and one electrical-output reading. Explanations and fine controls live in an optional drawer. | Make each action visible in the machine. |
-| High | Plant-to-equipment navigation | Entering equipment substituted another model. | Reuse the actual equipment group, open its casing and move the camera into it. | Preserve spatial continuity. |
-| Medium | Deep navigation | Parent faces obscured the selected part; open lids could crowd the header. | Retain only faint parent outlines and frame the opened geometry. Preserve horizontal shaft orientation in generator details. | Keep the destination readable during a dive. |
-| Medium | Native equipment | Transport disappeared when entering a physical component. | Attach model-driven internal routes to the equipment itself. | Preserve flow through transitions. |
-| Medium | Mobile controls | Small camera targets and a tight chassis frame. | Use 44 px bottom controls, retain rotation through dragging/keyboard, and widen portrait framing. | Keep controls usable and the whole machine visible at 320 px. |
-| Medium | Playback | Replacing the pause SVG on every value update could interrupt a pointer click. | Update pictograms only when their state changes. | Keep the pointer target stable during simulation and camera motion. |
-| Medium | Recovery | A domain stop could disable the pump needed to recover. | Allow circulation commands at the model boundary. | Let the model cool and rearm. |
+| Finding | Change |
+| --- | --- |
+| No apparent purpose or outcome | An immediate startup objective, five named commands, 100 MW target and palace windows tied to electrical output. |
+| Anonymous controls | Named actions and a single next-action button; unavailable commands explain their prerequisites. |
+| Muted, static presentation | Cobalt, yellow, tomato, cyan and pink equipment, ink outlines, original caricatures and removable 3D props. No green/lime palette. |
+| Exterior-only exploration | A camera journey through native equipment, opening shells, transparent occluders and a tracked droplet. |
+| Fluid circuits could be confused | Separate route chapters and an explicit heat-transfer handoff where the original droplet disappears. |
+| Complex settings dominated the activity | Model details and continuous sliders are behind the information drawer. |
+| Returning players could lose guidance after disconnecting output | The guide resumes the missing command when power is lost. |
 
-Native buttons, labelled ranges, a native dialog, visible focus and an accessible canvas name provide keyboard alternatives. Icon controls retain bilingual names and prerequisite descriptions. The white/navy/orange palette contains no green or lime. Copy review was manual; no AI-writing detector was used.
+Native buttons, a labelled language selector, visible focus, native-dialog focus containment, canvas keyboard controls, named detail buttons and live status messages remain. Changing numeric power is not a live announcement. Pointer targets do not replace their SVGs every animation frame.
 
-Reduced-motion source paths snap camera/section poses and stop particle/shaft travel; unit tests cover phase freezing. OS-level reduced-motion emulation, dedicated screen readers, physical touch devices, Safari, Firefox and low-end hardware performance have not been verified.
+Reduced-motion branches stop particles and continuous camera travel and provide explicit next-stop controls. Browser emulation of that preference was unavailable; it was reviewed in source rather than verified through the OS. Screen readers, physical touch devices, Safari, Firefox and low-end hardware remain untested.
 
-## Delivery and limits
+## Limits
 
-The public repository is `kennethassogba/rep`; production is an assets-only Cloudflare Worker at <https://rep.keff.uk>. After publishing, compare public HTML and referenced assets with the local build, then check the production page in the browser. GitHub Actions repeats tests, build, packaging and the production dependency audit.
+There is one machine in the collection. Routes and geometry are schematic. The camera follows authored curves; it does not solve fluid dynamics. The game runs at four model seconds per real second, with separately reduced thermal inertia. The fictional 100 MW target is not palace consumption. Accessories have no effect on physics. Presidents' dialogue is parody; the two historical quotations and generated caricatures are documented.
 
-The current collection contains one machine. The nine equipment trees are schematic, and fine geometry does not imply locally solved physics. Primary/secondary pressures, reduced thermal inertia, an ideal heat sink and omitted neutronics, pressure dynamics, fluid mechanics and grid synchronization are documented in `MODEL.md` and the app's information drawer. The visual reference informs colour and industrial form; no footage or third-party 3D assets were copied.
+Equations and omitted physics remain in `MODEL.md` and the optional information drawer. The local app makes no operational or accident-analysis claim.

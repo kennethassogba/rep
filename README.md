@@ -1,60 +1,56 @@
-# REP
+# REP — Light up the Élysée
 
-An interactive pressurized-water reactor, from the complete plant to fuel pellets, pump vanes and generator windings.
+A browser game about starting a nuclear power plant. Five switches, a palace in the dark, and two impatient presidents.
 
-**[Open rep.keff.uk](https://rep.keff.uk)**
+**[Play at rep.keff.uk](https://rep.keff.uk)**
 
-English by default; French is available from the language menu. The simulation runs in the browser. There are no accounts, analytics, remote simulation services or paid APIs.
+English by default, French from the language menu. Three.js runs the whole machine locally. No accounts, analytics or simulation service.
 
-## Operate and explore
+## Play
 
-The machine opens cold at 20 °C. Five numbered controls sit beside the equipment they operate:
+Giscard and de Gaulle guide the startup: cooling pumps → primary water → core heat → steam turbine → generator. Each command changes the machine. The objective is **100 MW**, at which point the palace windows light up. This is an absurd game target, not the actual electricity demand of the Élysée.
 
-1. Start cooling and feedwater circulation.
-2. Start the primary pump.
-3. Apply core heat. Watch water warm and the steam reserve form.
-4. Admit steam to turn the turbine.
-5. Connect the electrical load.
+Switches remain reversible after winning. Cut the output and the lights go out. Lose circulation and the heat source trips; the guide offers a restart. Fine controls and the energy model are available in the information drawer.
 
-The sequence is educational. Availability follows the simulated temperatures, flows and shaft speed. A locked control identifies its prerequisite; a progress ring shows heating or rotation. Commands remain reversible. Pump loss can trip the heat source, and the information drawer explains recovery.
+- **Follow the water** puts the camera beside a droplet inside the actual machine. The shells open and turn translucent. The journey follows primary water, crosses the tube wall as heat, then follows a different water circuit as steam and condensate. The waters do not mix.
+- Travel speed follows circulation and steam admission. No flow means no travel. Pause stops the model and the droplet; quarter speed slows both. Camera transitions can settle while paused. With reduced motion enabled, explicit next-stop controls replace continuous camera travel.
+- Click equipment to explore it: nine equipment trees, 168 nodes, down to fuel pellets, pump vanes and generator windings. The original equipment remains in place during entry; deeper representations appear at the selected part.
+- Add eyes, a baguette antenna or a disco ball. These are visible, removable props with no physical effect. Call the president for the “Au revoir” gag; click again to bring him back.
+- Drag to rotate. Focus the canvas and use arrow keys or +/−. Escape exits a journey or returns one level. Pause, zoom and navigation have keyboard controls. Machine sound is off by default.
 
-- Click a piece to enter it. The existing equipment opens as the camera approaches. Deeper geometry occupies the selected part's coordinates, with the parent retained as faint outlines.
-- Nine equipment trees contain 168 nodes, with four to seven levels per tree. Repeated components share representative detailed views.
-- Primary water, steam, cooling water and heat move through the machine. Their animation uses model rates. Pause and reduced motion retain static direction cues.
-- Drag to orbit; use the camera controls to rotate and zoom. Focus the canvas and use arrow keys or +/−. Escape returns one level.
-- Pause, quarter speed and optional synthesized machine sound are available below the scene. Sound starts off.
-- The information button opens component roles, continuous controls, equipment mean measurements, English/French selection and model limits. The main workspace contains pictograms and numbers.
+The app starts cold at 20 °C and advances four model seconds per real second; quarter speed uses one. Thermal inertia is also deliberately reduced. Neither clock represents a real plant startup schedule.
 
-The top-level components are the vessel, pressurizer, primary pump, steam generator, turbine, generator, condenser, feed pump and cooling system. Internal levels include core → assembly → rod → pellet → ceramic → grain, pump stage → impeller → vane, and generator rotor/stator → winding → conductor → insulation.
+## Fiction and references
 
-## Model
+Dialogue is original parody, labelled in the interface. Two short historical quotations are used:
 
-Energy is conserved across thermal reservoirs, steam storage, the shaft, residual heat, exported electricity and rejected heat. The tests check conservation and causal responses. Temperatures and flows are not scripted to lesson steps.
+- De Gaulle, [“Je vous ai compris !”, 4 June 1958](https://www.elysee.fr/charles-de-gaulle/1958/06/04/je-vous-ai-compris-discours-prononce-par-le-general-de-gaulle-president-du-conseil-au-forum-dalger-algerie-4-juin-1958).
+- Giscard, [“Au revoir”, 19 May 1981](https://www.ina.fr/ina-eclaire-actu/1981-valery-giscard-d-estaing-dit-au-revoir-aux-francais).
 
-**This is a teaching model, not an operating simulator.** The circuits start under imposed pressure. Effective thermal masses are reduced, so model seconds have no fixed conversion to plant time. Local fuel temperatures, water levels, pressure dynamics, neutronics, stresses, magnetic fields and accident behaviour are not solved. Detailed geometry does not imply detailed local physics.
+The presidents did not say the game's other lines. The caricatures were generated for this game; [asset methods and prompts](docs/ASSETS.md) are recorded.
 
-See [MODEL.md](MODEL.md) for equations, parameters and omissions. The same limits are available under **Model & limits** in the information drawer.
+Interaction references: [Neal's iPhone builder](https://neal.fun/design-the-next-iphone/) for immediately visible consequences; [Google Japan CAPS](https://archive.google/caps/) for absurd engineering; [April Zhu's Colorfigures](https://april-zhu.com/colorfigures) for saturated colour and inked machinery. No reference-site assets or code are included.
 
-## Run locally
+## Model underneath the game
 
-Use Node 24.22 or later (see `.nvmrc`).
+Energy moves between thermal reservoirs, steam, the shaft, exported electricity and rejected heat. Temperatures, power and flow animation come from this simplified model, not a scripted victory sequence. Tests check its conservation and causal behaviour.
+
+It is not an operating simulator. Circuit pressures are imposed. There is no local CFD, neutronics, water-level control, stress calculation or accident analysis. Detailed geometry does not imply detailed local physics. Travel curves are schematic routes, not computed particle trajectories.
+
+[MODEL.md](MODEL.md) documents equations and omissions. [NRC PWR overview](https://www.nrc.gov/reactors/power/pwrs) and [Reactor Concepts Manual](https://www.nrc.gov/sites/default/files/doc_library/cdn/legacy/reading-rm/basic-ref/students/for-educators/04.pdf) are technical references.
+
+## Develop and deploy
+
+Node 24.22 or later:
 
 ```sh
 npm ci
 npm run dev
-```
-
-```sh
 npm test
 npm run build
-npm run preview
 ```
 
-The only application dependencies are Three.js and the locally bundled DM Sans font. Vite, TypeScript and Cloudflare's CLI are development tools. The dependency overrides patch transitive CLI libraries; `npm audit` is checked during validation.
-
-## Deploy
-
-The static site is hosted by Cloudflare Workers at `rep.keff.uk`.
+The application dependencies are Three.js and the locally bundled DM Sans font. Vite, TypeScript and Cloudflare's CLI are development tools.
 
 ```sh
 npm run build
@@ -62,15 +58,6 @@ npm run package:worker
 npx cf deploy --prebuilt
 ```
 
-Authenticate with the Cloudflare CLI or provide `CLOUDFLARE_API_TOKEN` through the environment. The repository contains no credentials. The checked-in account and hostname target the original deployment; change `cloudflare.config.ts` for another account.
+Cloudflare serves static assets at `rep.keff.uk`. Authenticate with the CLI or provide `CLOUDFLARE_API_TOKEN` through the environment. The repo contains no credentials. Change `cloudflare.config.ts` to deploy to another account.
 
-GitHub Actions runs model/geometry tests, the production build, packaging and the production dependency audit. Production publishing is an explicit CLI step; CI does not silently deploy.
-
-## References
-
-- [NRC: Pressurized water reactors](https://www.nrc.gov/reactors/power/pwrs)
-- [NRC: Reactor Concepts Manual, PWR systems](https://www.nrc.gov/sites/default/files/doc_library/cdn/legacy/reading-rm/basic-ref/students/for-educators/04.pdf)
-- [Video reference](https://x.com/visegrad24/status/1991511558992916580): Concorde and Ariane footage informed the current industrial direction: enamel white, navy, signal orange and exposed metal. No video assets are included.
-- [Colorfigures by April Zhu](https://april-zhu.com/colorfigures) informed the earlier inked cutaway exploration. Geometry and implementation are original.
-
-[Validation notes](docs/VALIDATION.md) distinguish automated tests from browser inspection.
+GitHub Actions runs tests, build, packaging and a production dependency audit. Deployment is a separate explicit step. See [validation notes](docs/VALIDATION.md) for the browser checks and remaining limits.
