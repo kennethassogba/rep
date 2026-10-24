@@ -24,9 +24,12 @@ In the in-app Chromium browser, at 1280 x 720 and 320 x 780:
 - Pause stopped the fluid journey, leaving its position caption visible. Leaving the circuit returned to the overview. English/French switching retained the machine state.
 - Restart returned the machine and all five control readings to cold/zero. The information panel exposed 12 historical references. The speech bubble contained no action button.
 - Corrected a clipped French cooling label, a mobile alert/subtitle overlap and a reactor handle hidden by its opening lid. Mobile text and controls fit without horizontal page overflow.
+- Removed the repeated header subtitle and permanent footer instructions. Handle hints appear only while hovering or dragging, and clear on release.
 - Runtime visible text and title contained none of the forbidden typography characters. No browser warnings or errors were reported during the checks.
 
 Pointer interaction was exercised in the browser, including at mobile width. This is not a physical touchscreen or low-end-device performance qualification.
+
+Production smoke: the deployed HTML, JavaScript and CSS matched the local build byte for byte. All five 3D commands were exercised on rep.keff.uk and output reached 201 MW.
 
 ## Design review
 

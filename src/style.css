@@ -117,11 +117,7 @@ svg {
   margin: 0 0 8px;
   font-weight: 800;
 }
-.heading p {
-  font-size: 14px;
-  margin: 0;
-  color: var(--muted);
-}
+
 .view-tools {
   display: flex;
   align-items: center;
@@ -473,9 +469,7 @@ svg {
   font-size: 11px;
   min-height: 30px;
 }
-.camera #interaction-hint {
-  margin: 0 12px;
-}
+
 .camera #left,
 .camera #right {
   display: none;
@@ -523,7 +517,6 @@ svg {
 .travelling .goal-meter {
   display: none;
 }
-.travelling .camera #interaction-hint,
 .travelling .camera .tool,
 .travelling #section {
   visibility: hidden;
@@ -783,12 +776,6 @@ dialog .drawer-top {
   .goal-meter {
     width: 140px;
   }
-  .heading p {
-    font-size: 12px;
-  }
-  .camera #interaction-hint {
-    font-size: 10px;
-  }
 }
 @media (max-width: 700px) {
   #experience {
@@ -814,12 +801,7 @@ dialog .drawer-top {
     letter-spacing: -1px;
     margin-bottom: 6px;
   }
-  .heading p {
-    font-size: 12px;
-    max-width: 300px;
-    margin: auto;
-    line-height: 1.4;
-  }
+
   .view-tools {
     order: 1;
   }
@@ -946,9 +928,7 @@ dialog .drawer-top {
     gap: 2px;
     justify-content: space-between;
   }
-  .camera #interaction-hint {
-    display: none;
-  }
+
   .camera .tool {
     width: 36px;
     height: 36px;
@@ -1221,9 +1201,6 @@ dialog .drawer-top {
 }
 
 @media (max-width: 700px) {
-  .failed #objective {
-    visibility: hidden;
-  }
   .trip {
     top: 143px;
     right: 14px;

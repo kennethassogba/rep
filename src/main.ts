@@ -108,7 +108,7 @@ let sound = false,
   hum: GainNode | undefined;
 const app = $("app");
 app.innerHTML = `<main id="experience" tabindex="-1">
-<header class="topbar"><button id="home" class="wordmark" aria-label="Whole plant">REP</button><div class="heading"><h1></h1><p id="objective"></p></div><div class="view-tools"><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select><button id="info" class="tool">${icons.info}</button></div></header>
+<header class="topbar"><button id="home" class="wordmark" aria-label="Whole plant">REP</button><div class="heading"><h1></h1></div><div class="view-tools"><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select><button id="info" class="tool">${icons.info}</button></div></header>
 <div id="scene"></div><output id="control-hint" hidden></output><div class="explore-nav"><button id="back" class="text-button" hidden>${icons.back}<span></span></button><span id="depth"></span></div>
 <div class="goal-meter"><output id="power" aria-live="off"><strong id="megawatts">0</strong><span> / 100 MW</span></output><div class="meter-track"><i id="goal-fill"></i></div><span id="goal-caption"></span></div>
 <div class="guide" id="guide"><button id="president" class="portrait" type="button"><span class="empty-chair" aria-hidden="true">🪑</span><img id="portrait" src="/characters/giscard.png" alt="" width="180" height="196"></button><div class="speech"><span id="speaker"></span><p id="guide-line"></p></div></div>
@@ -116,7 +116,7 @@ app.innerHTML = `<main id="experience" tabindex="-1">
 <nav id="components" class="components" hidden></nav>
 <footer class="game-controls"><div class="utility-row"><div class="playback"><button id="pause" class="text-button"><span class="pause-icon">${icons.pause}</span><span id="pause-label"></span></button><button id="slow" class="text-button" aria-pressed="false">¼×</button><button id="new-game" class="tool">${icons.left}</button><button id="sound" class="tool" aria-pressed="false">${icons.muted}</button></div><button id="follow" class="follow text-button">${icons.primary}<span></span></button><details class="toy-menu" id="toy-menu"><summary id="toy-title"></summary><div class="toy-options">${(["eyes", "baguette", "disco"] as Addon[]).map((id) => `<button id="toy-${id}" data-toy="${id}" aria-pressed="false"></button>`).join("")}</div></details></div>
 <div id="actuators" class="actuators">${actions.map((action) => `<button class="actuator" id="action-${action}" data-action="${action}" type="button"><span class="ordinal">${0}%</span><span class="actuator-icon"><span class="control-dial" aria-hidden="true"><i></i></span></span><span class="action-name"></span><span class="action-state" aria-hidden="true"></span><span class="action-progress"></span></button>`).join("")}</div>
-<div class="camera"><button id="section" class="text-button" aria-pressed="true">${icons.cut}<span></span></button><span id="interaction-hint"></span><button id="left" class="tool">${icons.left}</button><button id="right" class="tool">${icons.right}</button><button id="minus" class="tool">${icons.minus}</button><button id="plus" class="tool">${icons.plus}</button><button id="view-reset" class="tool">${icons.reset}</button></div></footer><p id="status" class="sr-only" role="status"></p><button id="trip" class="trip text-button" hidden>${icons.alert}<span></span></button></main>
+<div class="camera"><button id="section" class="text-button" aria-pressed="true">${icons.cut}<span></span></button><button id="left" class="tool">${icons.left}</button><button id="right" class="tool">${icons.right}</button><button id="minus" class="tool">${icons.minus}</button><button id="plus" class="tool">${icons.plus}</button><button id="view-reset" class="tool">${icons.reset}</button></div></footer><p id="status" class="sr-only" role="status"></p><button id="trip" class="trip text-button" hidden>${icons.alert}<span></span></button></main>
 <dialog id="inspector" aria-labelledby="part-title"><div class="drawer-top"><span id="info-label"></span><button id="close-info" class="tool">${icons.close}</button></div><h2 id="part-title"></h2><p id="part-role"></p><p id="measurements"></p><nav id="part-list"></nav><details><summary id="fine-controls"></summary><div id="settings"></div><p id="reason"></p><button id="rearm" hidden></button></details><details id="model"><summary></summary><div id="model-content"></div></details><details id="references"><summary></summary><div id="reference-list"></div></details><div class="drawer-foot"><button id="restart"></button><a href="https://github.com/kennethassogba/rep" target="_blank" rel="noreferrer">GitHub ↗</a></div></dialog>`;
 const setName = (id: string, en: string, fr: string) => {
   $(id).setAttribute("aria-label", L(en, fr));
@@ -129,10 +129,6 @@ function localize() {
     "Start a nuclear power plant.",
     "Démarre une centrale nucléaire.",
   );
-  $("objective").textContent = L(
-    "Light up the Élysée. Turn the valves. Try the levers.",
-    "Rallume l'Élysée. Tourne les vannes. Essaie les leviers.",
-  );
   $("goal-caption").textContent = L(
     "The palace is waiting",
     "Le palais attend",
@@ -143,10 +139,6 @@ function localize() {
   $("toy-eyes").textContent = L("Googly eyes", "Yeux écarquillés");
   $("toy-baguette").textContent = L("Baguette antenna", "Antenne baguette");
   $("toy-disco").textContent = L("Disco turbine", "Turbine disco");
-  $("interaction-hint").textContent = L(
-    "Drag a handle to adjust · click a machine to enter",
-    "Tire un levier pour régler · clique sur une machine pour entrer",
-  );
   $("info-label").textContent = L("Inside the machine", "Dans la machine");
   $("fine-controls").textContent = L("Fine controls", "Réglages fins");
   $("trip").querySelector("span")!.textContent = L(

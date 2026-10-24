@@ -344,7 +344,7 @@ export class MachineScene {
       canvas.style.cursor = "grab";
       if (d.moved) this.onAdjust(d.action, d.current, true);
       else if (e.type === "pointerup") this.onAction(d.action);
-      hint(d.action);
+      hint();
     };
     canvas.addEventListener("pointerup", end, true);
     canvas.addEventListener("pointercancel", end, true);
