@@ -35,11 +35,30 @@ test('every level produces finite non-empty 3D geometry', () => {
     g.traverse((o) => {
       if (o instanceof T.Mesh || o instanceof T.Line) {
         count++;
+        if (o.userData.child)
+          assert.ok(p.children.some((child) => child.id === o.userData.child), p.id);
         o.geometry.dispose();
         const ms = Array.isArray(o.material) ? o.material : [o.material];
         ms.forEach((m) => m.dispose());
       }
     });
     assert.ok(count > 0, p.id);
+  }
+});
+
+test('winding, rotor and turbine rows have distinct physical entry points', () => {
+  for (const id of ['generator', 'generator/stator', 'turbine/stage']) {
+    const part = parts.get(id)!;
+    const object = buildDetail(part);
+    const targets = new Set<string>();
+    object.traverse((o) => {
+      if (o.userData.child) targets.add(o.userData.child);
+      if (o instanceof T.Mesh || o instanceof T.Line) {
+        o.geometry.dispose();
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+      }
+    });
+    const expected = id === 'generator' ? ['rotor', 'stator'] : id.endsWith('stator') ? ['winding', 'core'] : ['moving', 'fixed'];
+    for (const child of expected) assert.ok(targets.has(`${id}/${child}`), `${id}/${child}`);
   }
 });

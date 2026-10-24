@@ -6,6 +6,25 @@ import { buildDetail } from "./detail";
 import { parts, tr, type Part, type Lang } from "./parts";
 import { inkMaterial } from "./ink";
 
+type View = {
+  target: T.Vector3;
+  position: T.Vector3;
+  half: number;
+  zoom: number;
+};
+type Layer = {
+  object: T.Group;
+  center: T.Vector3;
+  radius: number;
+  view?: View;
+};
+type Flight = {
+  start: number;
+  from: View;
+  to: View;
+  weights: Map<T.Object3D, number>;
+  destinations: Map<T.Object3D, number>;
+};
 type V = [number, number, number];
 const colors = {
   ink: 0x29313f,
@@ -45,6 +64,170 @@ export class PlantScene {
   detailRoot = new T.Group();
   detail?: Part;
   detailRadius = 3;
+  hovered: T.Mesh[] = [];
+  hoverId?: string;
+  previewPart(id?: string) {
+    if (this.hoverId === id) return;
+    this.hoverId = id;
+    for (const mesh of this.hovered)
+      (mesh.material as T.MeshToonMaterial).emissive.setHex(0);
+    this.hovered = [];
+    const source = this.detail
+      ? this.activeObject()
+      : id
+        ? this.groups.get(id as EquipmentId)
+        : undefined;
+    source?.traverse((o) => {
+      if (
+        o instanceof T.Mesh &&
+        o.material instanceof T.MeshToonMaterial &&
+        (!this.detail || o.userData.child === id)
+      ) {
+        o.material.emissive.setHex(0x24365a);
+        this.hovered.push(o);
+      }
+    });
+    this.renderer.domElement.style.cursor = id ? "zoom-in" : "grab";
+    this.render();
+  }
+  layers = new Map<string, Layer>();
+  flight?: Flight;
+  weights = new Map<T.Object3D, number>();
+  plantView?: View;
+  viewHalf = 6.5;
+  activeObject() {
+    return this.detail ? this.layers.get(this.detail.id)?.object : undefined;
+  }
+  captureView(): View {
+    return {
+      target: this.orbit.target.clone(),
+      position: this.camera.position.clone(),
+      half: this.camera.top,
+      zoom: this.camera.zoom,
+    };
+  }
+  setView(v: View) {
+    this.orbit.target.copy(v.target);
+    this.camera.position.copy(v.position);
+    const aspect = this.host.clientWidth / Math.max(1, this.host.clientHeight);
+    this.viewHalf = v.half;
+    this.camera.left = -v.half * aspect;
+    this.camera.right = v.half * aspect;
+    this.camera.top = v.half;
+    this.camera.bottom = -v.half;
+    this.camera.zoom = v.zoom;
+    const distance = v.position.distanceTo(v.target);
+    this.camera.near = Math.max(0.00000001, distance / 1000);
+    this.camera.far = Math.max(150, distance * 100);
+    this.camera.updateProjectionMatrix();
+    this.camera.lookAt(v.target);
+  }
+  fadeObject(object: T.Object3D, weight: number) {
+    object.visible = weight > 0.001;
+    this.weights.set(object, weight);
+    object.traverse((o) => {
+      if (!(o instanceof T.Mesh || o instanceof T.Line)) return;
+      const materials = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of materials) {
+        m.userData.fullOpacity ??= m.opacity;
+        m.opacity =
+          m.userData.fullOpacity *
+          (o instanceof T.Mesh ? weight * weight : weight);
+        if (m.transparent !== m.opacity < 1) {
+          m.transparent = m.opacity < 1;
+          m.needsUpdate = true;
+        }
+        m.depthWrite = m.opacity >= 0.99;
+      }
+    });
+  }
+  /** World-space representative of the selected child, never an arbitrary camera reset. */
+  anchor(part: Part): T.Sphere {
+    const source = part.parent
+      ? this.layers.get(part.parent.id)?.object
+      : this.groups.get(part.id as EquipmentId);
+    const fallback = part.parent ? this.layers.get(part.parent.id) : undefined;
+    let match: T.Object3D | undefined;
+    const joined = new T.Box3();
+    source?.updateWorldMatrix(true, true);
+    source?.traverse((o) => {
+      if (o.userData.child === part.id) {
+        match ??= o;
+        joined.expandByObject(o);
+      }
+    });
+    if (match && part.kind === "core")
+      return joined.getBoundingSphere(new T.Sphere());
+    if (match)
+      return new T.Box3()
+        .setFromObject(match)
+        .getBoundingSphere(new T.Sphere());
+    if (!part.parent && source)
+      return new T.Box3()
+        .setFromObject(source)
+        .getBoundingSphere(new T.Sphere());
+    return new T.Sphere(
+      fallback?.center.clone() ?? new T.Vector3(),
+      (fallback?.radius ?? 3) * 0.3,
+    );
+  }
+  animateNavigation(now: number) {
+    const f = this.flight;
+    if (!f) return;
+    const t = Math.min(1, (now - f.start) / (this.reduced ? 120 : 850));
+    const eased = t * t * (3 - 2 * t);
+    // Zoom interpolates in log space so changes of scale keep a steady perceived speed.
+    this.setView(
+      this.reduced
+        ? f.to
+        : {
+            target: f.from.target.clone().lerp(f.to.target, eased),
+            position: f.from.position.clone().lerp(f.to.position, eased),
+            half: Math.exp(
+              T.MathUtils.lerp(
+                Math.log(f.from.half),
+                Math.log(f.to.half),
+                eased,
+              ),
+            ),
+            zoom: T.MathUtils.lerp(f.from.zoom, f.to.zoom, eased),
+          },
+    );
+    for (const [object, weight] of f.destinations) {
+      this.fadeObject(
+        object,
+        T.MathUtils.lerp(f.weights.get(object) ?? 0, weight, eased),
+      );
+    }
+    this.render();
+    if (t === 1) {
+      this.flight = undefined;
+      this.orbit.enabled = true;
+      this.orbit.update();
+      this.host.removeAttribute("aria-busy");
+      this.pruneLayers();
+    }
+  }
+  pruneLayers() {
+    for (const [id, layer] of this.layers) {
+      if (
+        this.detail &&
+        (id === this.detail.id || this.detail.id.startsWith(id + "/"))
+      )
+        continue;
+      layer.object.traverse((o) => {
+        if (o instanceof T.Mesh || o instanceof T.Line) {
+          o.geometry.dispose();
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) =>
+            m.dispose(),
+          );
+        }
+      });
+      this.detailRoot.remove(layer.object);
+      this.weights.delete(layer.object);
+      this.layers.delete(id);
+    }
+  }
   detailLabels: HTMLButtonElement[] = [];
   language: Lang = "en";
   onDrill: (id: string) => void = () => {};
@@ -116,6 +299,7 @@ export class PlantScene {
     this.orbit.addEventListener("change", () => this.render());
     this.setTransparency(true);
     this.highlight("cooling");
+    this.fadeObject(this.plantRoot, 1);
     new ResizeObserver(() => this.resize()).observe(host);
     this.resize();
     let down = [0, 0];
@@ -123,6 +307,7 @@ export class PlantScene {
       down = [e.clientX, e.clientY];
     });
     this.renderer.domElement.addEventListener("pointerup", (e) => {
+      if (this.flight) return;
       if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
       const rect = this.renderer.domElement.getBoundingClientRect();
       this.pointer.set(
@@ -131,7 +316,7 @@ export class PlantScene {
       );
       this.ray.setFromCamera(this.pointer, this.camera);
       if (this.detail) {
-        const hits = this.ray.intersectObject(this.detailRoot, true);
+        const hits = this.ray.intersectObject(this.activeObject()!, true);
         const ordered = [
           ...hits.filter(
             (h) =>
@@ -153,11 +338,44 @@ export class PlantScene {
         let obj: T.Object3D | null = hit.object;
         while (obj && !obj.userData.equipment) obj = obj.parent;
         if (obj?.userData.equipment) {
-          this.select(obj.userData.equipment);
+          this.onDrill(obj.userData.equipment);
           break;
         }
       }
     });
+    this.renderer.domElement.addEventListener("pointermove", (e) => {
+      if (this.flight || e.buttons) return;
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.set(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        (-(e.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      this.ray.setFromCamera(this.pointer, this.camera);
+      const objects = this.detail
+        ? [this.activeObject()!]
+        : [...this.groups.values()];
+      const hits = this.ray.intersectObjects(objects, true);
+      let id: string | undefined;
+      for (const hit of hits) {
+        let o: T.Object3D | null = hit.object;
+        if (this.detail) {
+          if (o.userData.child) {
+            id = o.userData.child;
+            break;
+          }
+        } else {
+          while (o && !o.userData.equipment) o = o.parent;
+          if (o) {
+            id = o.userData.equipment;
+            break;
+          }
+        }
+      }
+      this.previewPart(id);
+    });
+    this.renderer.domElement.addEventListener("pointerleave", () =>
+      this.previewPart(),
+    );
     matchMedia("(prefers-reduced-motion: reduce)").addEventListener(
       "change",
       (e) => {
@@ -325,7 +543,9 @@ export class PlantScene {
       button.className = "scene-label";
       button.textContent = equipment[id].short;
       button.dataset.equipment = id;
-      button.addEventListener("click", () => this.select(id));
+      button.addEventListener("click", () => this.onDrill(id));
+      button.addEventListener("pointerenter", () => this.previewPart(id));
+      button.addEventListener("pointerleave", () => this.previewPart());
       this.host.append(button);
       this.labels.set(id, button);
       const line = document.createElementNS(
@@ -631,23 +851,19 @@ export class PlantScene {
     const w = this.host.clientWidth,
       h = this.host.clientHeight;
     if (!w || !h) return;
-    const aspect = w / h,
-      half = this.detail
-        ? this.detailRadius * 1.35 * Math.max(1, 1 / aspect)
-        : Math.max(6.5, 10.8 / aspect);
-    this.camera.left = -half * aspect;
-    this.camera.right = half * aspect;
-    this.camera.top = half;
-    this.camera.bottom = -half;
-    this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    const layer = this.detail && this.layers.get(this.detail.id);
+    const half = layer
+      ? layer.radius * 1.18 * Math.max(1, 1 / (w / h))
+      : Math.max(6.1, 10.2 / (w / h));
+    if (this.orbit) this.setView({ ...this.captureView(), half });
     this.render();
   }
   highlight(id: EquipmentId) {
     this.selected = id;
     this.selection.position.set(...positions[id]);
     for (const [key, label] of this.labels)
-      label.setAttribute("aria-pressed", String(id === key));
+      label.dataset.selected = String(id === key);
     this.render();
   }
   setTransparency(value: boolean) {
@@ -655,14 +871,17 @@ export class PlantScene {
     for (const m of this.shells) {
       const mat = m.material as T.MeshToonMaterial;
       mat.transparent = value;
+      mat.needsUpdate = true;
       mat.opacity = value ? 0.26 : 1;
       mat.depthWrite = !value;
+      mat.userData.fullOpacity = mat.opacity;
       // Keep outlines legible while revealing the internal parts.
       (
         (m.children[0] as T.LineSegments).material as T.LineBasicMaterial
       ).opacity = value ? 0.44 : 0.9;
     }
     this.applyDetailStyle();
+    this.weights.forEach((w, o) => this.fadeObject(o, w));
     this.render();
   }
   setExploded(value: boolean) {
@@ -670,6 +889,7 @@ export class PlantScene {
     for (const item of this.lids)
       item.object.position.y = item.base + (value ? item.offset : 0);
     this.applyDetailStyle();
+    this.weights.forEach((w, o) => this.fadeObject(o, w));
     this.render();
   }
   rotate(angle: number) {
@@ -685,17 +905,31 @@ export class PlantScene {
     this.render();
   }
   reset() {
-    if (this.detail) {
-      this.camera.position.set(9, 7, 12);
-      this.orbit.target.set(0, 1, 0);
-      this.camera.zoom = 1;
-      this.camera.updateProjectionMatrix();
-      this.orbit.update();
-    } else this.orbit.reset();
+    const layer = this.detail && this.layers.get(this.detail.id);
+    const center = layer ? layer.center : new T.Vector3(0, 1.3, 0);
+    const radius = layer ? layer.radius : 4.5;
+    this.setView({
+      target: center.clone(),
+      position: center
+        .clone()
+        .add(new T.Vector3(12, 10, 17).normalize().multiplyScalar(radius * 5)),
+      half: layer
+        ? radius *
+          1.18 *
+          Math.max(1, this.host.clientHeight / this.host.clientWidth)
+        : Math.max(
+            6.1,
+            (10.2 * this.host.clientHeight) / this.host.clientWidth,
+          ),
+      zoom: 1,
+    });
+    this.orbit.update();
     this.render();
   }
   setLanguage(language: Lang) {
     this.language = language;
+    for (const label of this.detailLabels)
+      label.textContent = tr(parts.get(label.dataset.child!)!.name, language);
     for (const [id, label] of this.labels)
       label.textContent = tr(parts.get(id)!.name, language);
     this.renderer.domElement.setAttribute(
@@ -706,57 +940,116 @@ export class PlantScene {
     );
     this.render();
   }
-  setDetail(part?: Part) {
+  setDetail(part?: Part, immediate = false) {
+    this.previewPart();
+    const previous = this.detail;
+    if (previous?.id === part?.id && this.plantView) {
+      this.render();
+      return;
+    }
+    const from = this.captureView();
+    if (previous) {
+      const old = this.layers.get(previous.id);
+      if (old && !this.flight) old.view = from;
+    } else if (!this.flight) this.plantView = from;
     for (const label of this.detailLabels) label.remove();
     this.detailLabels = [];
-    this.detailRoot.traverse((o) => {
-      if (o instanceof T.Mesh || o instanceof T.Line) {
-        o.geometry.dispose();
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        mats.forEach((m) => m.dispose());
-      }
-    });
-    this.detailRoot.clear();
-    this.detail = part;
-    this.plantRoot.visible = !part;
-    if (part) {
-      const object = buildDetail(part);
-      const bounds = new T.Box3().setFromObject(object);
-      const sphere = bounds.getBoundingSphere(new T.Sphere());
-      this.detailRadius = Math.max(sphere.radius, 0.1);
-      object.position.copy(sphere.center).multiplyScalar(-1);
-      object.position.y += 1;
-      this.detailRoot.add(object);
-      object.children.forEach((child) => {
+    // Build missing ancestors in order, keeping each child inside its parent coordinates.
+    const path: Part[] = [];
+    for (let p = part; p; p = p.parent) path.unshift(p);
+    for (const p of path) {
+      if (this.layers.has(p.id)) continue;
+      const anchor = this.anchor(p);
+      const mesh = buildDetail(p);
+      const sphere = new T.Box3()
+        .setFromObject(mesh)
+        .getBoundingSphere(new T.Sphere());
+      const parent = p.parent && this.layers.get(p.parent.id);
+      const radius = parent
+        ? T.MathUtils.clamp(
+            anchor.radius,
+            parent.radius * 0.18,
+            parent.radius * 0.52,
+          )
+        : anchor.radius * 0.95;
+      const object = new T.Group();
+      mesh.position.copy(sphere.center).multiplyScalar(-1);
+      object.add(mesh);
+      object.position.copy(anchor.center);
+      object.scale.setScalar(radius / Math.max(sphere.radius, 0.001));
+      mesh.children.forEach((child) => {
         child.userData.basePosition = child.position.clone();
       });
-      object.traverse((o) => {
-        if (o instanceof T.Mesh) {
-          const m = o.material as T.MeshToonMaterial;
-          o.userData.baseOpacity = m.opacity;
-        }
+      mesh.traverse((o) => {
+        if (o instanceof T.Mesh)
+          o.userData.baseOpacity = (o.material as T.Material).opacity;
       });
-      part.children.forEach((child, i) => {
-        const b = document.createElement("button");
-        b.className = "detail-label";
-        b.innerHTML = `<span>${String(i + 1).padStart(2, "0")}</span>${tr(child.name, this.language)}<b aria-hidden="true">↗</b>`;
-        b.onclick = () => this.onDrill(child.id);
-        this.host.append(b);
-        this.detailLabels.push(b);
-      });
-      this.camera.position.set(9, 7, 12);
-      this.orbit.target.set(0, 1, 0);
-      this.camera.zoom = 1;
-    } else {
-      this.orbit.reset();
-      this.camera.zoom = 1;
+      this.detailRoot.add(object);
+      this.layers.set(p.id, { object, center: anchor.center.clone(), radius });
+      this.fadeObject(object, 0);
     }
+    this.detail = part;
+    part?.children.forEach((child) => {
+      const label = document.createElement("button");
+      label.className = "detail-label scene-label";
+      label.textContent = tr(child.name, this.language);
+      label.dataset.child = child.id;
+      label.onclick = () => this.onDrill(child.id);
+      label.onpointerenter = () => this.previewPart(child.id);
+      label.onpointerleave = () => this.previewPart();
+      this.host.append(label);
+      this.detailLabels.push(label);
+    });
+    const layer = part && this.layers.get(part.id);
+    const aspect = this.host.clientWidth / Math.max(1, this.host.clientHeight);
+    let to = {
+      ...(this.plantView ?? from),
+      half: Math.max(6.1, 10.2 / aspect),
+    };
+    if (layer) {
+      const direction = from.position.clone().sub(from.target).normalize();
+      to = layer.view
+        ? { ...layer.view, half: layer.radius * 1.18 * Math.max(1, 1 / aspect) }
+        : {
+            target: layer.center.clone(),
+            position: layer.center
+              .clone()
+              .addScaledVector(direction, layer.radius * 5),
+            half: layer.radius * 1.18 * Math.max(1, 1 / aspect),
+            zoom: 1,
+          };
+      this.detailRadius = layer.radius;
+    }
+    const destinations = new Map<T.Object3D, number>();
+    destinations.set(this.plantRoot, part ? (part.parent ? 0 : 0.035) : 1);
+    for (const [id, l] of this.layers)
+      destinations.set(
+        l.object,
+        id === part?.id ? 1 : id === part?.parent?.id ? 0.045 : 0,
+      );
     this.applyDetailStyle();
-    this.orbit.update();
-    this.resize();
+    this.weights.forEach((w, o) => this.fadeObject(o, w));
+    if (immediate) {
+      this.flight = undefined;
+      this.setView(to);
+      destinations.forEach((w, o) => this.fadeObject(o, w));
+      this.pruneLayers();
+      this.orbit.enabled = true;
+    } else {
+      this.flight = {
+        start: performance.now(),
+        from,
+        to,
+        weights: new Map(this.weights),
+        destinations,
+      };
+      this.orbit.enabled = false;
+      this.host.setAttribute("aria-busy", "true");
+    }
+    this.render();
   }
   applyDetailStyle() {
-    const root = this.detailRoot.children[0];
+    const root = this.activeObject()?.children[0];
     if (!root) return;
     root.children.forEach((child) => {
       const base = child.userData.basePosition as T.Vector3 | undefined;
@@ -768,7 +1061,9 @@ export class PlantScene {
         const m = o.material as T.MeshToonMaterial;
         m.opacity = this.transparent ? o.userData.baseOpacity : 1;
         m.transparent = this.transparent;
+        m.needsUpdate = true;
         m.depthWrite = !this.transparent;
+        m.userData.fullOpacity = m.opacity;
       }
     });
   }
@@ -787,7 +1082,7 @@ export class PlantScene {
                 : s.coolingFlow * 3;
         m.mesh.rotation[m.axis] += speed * dt;
       }
-      const obj = this.detailRoot.children[0];
+      const obj = this.activeObject()?.children[0];
       if (obj && this.detail) {
         const kind = this.detail.kind;
         if (["rotor", "shaft", "impeller", "fan"].includes(kind)) {
@@ -853,12 +1148,13 @@ export class PlantScene {
           break;
         y = y + 34 < h - 24 ? y + 34 : y - 34;
       }
-      occupied.push({ x, y, width });
+      if (!this.detail) occupied.push({ x, y, width });
       label.style.left = `${x}px`;
       label.style.top = `${y}px`;
       label.hidden =
         !!this.detail ||
-        (!this.showLabels && id !== this.selected) ||
+        !!this.flight ||
+        (!this.showLabels && id !== (this.hoverId ?? this.selected)) ||
         (w < 580 && id !== this.selected);
       const line = this.leaders.get(id)!;
       line.setAttribute("x1", String(anchorX));
@@ -868,9 +1164,26 @@ export class PlantScene {
       line.style.display = label.hidden ? "none" : "";
     }
     this.detailLabels.forEach((label, i) => {
-      label.hidden = !this.showLabels;
-      label.style.left = `${w < 580 ? 12 : 24}px`;
-      label.style.top = `${24 + i * 43}px`;
+      label.hidden = !this.showLabels || !!this.flight;
+      const anchor = this.anchor(
+        parts.get(label.dataset.child!)!,
+      ).center.project(this.camera);
+      const x = T.MathUtils.clamp(
+        ((anchor.x + 1) * w) / 2,
+        85,
+        Math.max(85, w - 85),
+      );
+      let y = T.MathUtils.clamp(((1 - anchor.y) * h) / 2, 30, h - 30);
+      while (
+        occupied.some(
+          (o) => Math.abs(o.x - x) < 160 && Math.abs(o.y - y) < 32,
+        ) &&
+        y < h - 55
+      )
+        y += 34;
+      occupied.push({ x, y, width: 150 });
+      label.style.left = `${x}px`;
+      label.style.top = `${y}px`;
     });
   }
 }

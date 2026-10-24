@@ -600,6 +600,22 @@ export function buildDetail(part: Part) {
     if (part.kind === 'impeller' || part.kind === 'fan')
       target = geo instanceof T.BoxGeometry ? child('blade') : undefined;
     if (part.kind === 'coil') target = child('conductor');
+    if (part.kind === 'pellet') target = child('ceramic');
+    if (part.id.endsWith('/ceramic')) target = child('grain');
+    if (part.kind === 'stator' && geo instanceof T.BoxGeometry)
+      target = material.color.getHex() === hot ? child('winding') : child('core');
+    if (part.kind === 'rotor')
+      target = geo instanceof T.TorusGeometry ? child('winding') : child('shaft');
+    if (part.kind === 'generator' || part.kind === 'motor') {
+      if (geo instanceof T.CylinderGeometry)
+        target = geo.parameters.radiusTop < 0.5 ? child('rotor') : child('stator');
+      if (geo instanceof T.BoxGeometry && material.color.getHex() !== paper)
+        target = child('stator');
+    }
+    if (part.kind === 'turbine')
+      target = geo instanceof T.CylinderGeometry ? child('shaft') : child('stage');
+    if (part.kind === 'stage' && geo instanceof T.BoxGeometry)
+      target = (o.parent?.position.x ?? 0) > 0 ? child('moving') : child('fixed');
     if (part.kind === 'wire') target = material.opacity < 1 ? child('insulation') : undefined;
     if (part.kind === 'tube')
       target = geo instanceof T.TubeGeometry ? child('inside') : child('wall');

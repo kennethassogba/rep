@@ -8,12 +8,12 @@ English by default; French is available from the language menu. The simulation r
 
 ## Explore
 
-- Start the energy cycle in five guided steps, or adjust equipment in Explore mode.
-- Select equipment in the 3D drawing or the equipment list. Open it, then follow **Inside** to progressively smaller parts.
+- Explore opens on the full drawing. Choose Guided start to run the energy cycle in five steps.
+- Click equipment in the drawing to enter it, then choose an internal part. The camera follows its position and keeps the parent as faint outlines. Use the back button, path or Escape to return.
 - Nine equipment trees contain 168 nodes, with four to seven levels per tree. Geometry is schematic; repeated physical components share representative views.
 - Rotate, zoom, use cutaway and exploded views. Labels are optional.
 - Pause or change playback speed. Space controls playback outside form controls; Escape moves up one component level. Buttons and component lists provide keyboard alternatives to dragging and picking.
-- Read the component role, connections, live equipment values and model limits at the point of use.
+- Open Details for the component role, controls and connections; open Measurements for plant values. Both stay closed while exploring unless requested.
 
 The top-level components are the vessel, pressurizer, primary pump, steam generator, turbine, generator, condenser, feed pump and cooling system. Internal levels include core → assembly → rod → pellet → ceramic → grain, pump stage → impeller → vane, and generator rotor/stator → winding → conductor → insulation.
 

@@ -4,7 +4,7 @@ Checked on 24 October 2026. This records software checks, not scientific qualifi
 
 ## Automated checks
 
-- `npm test`: 15 passing tests. Twelve exercise the physical model; three check all nine equipment trees, bilingual content, parent/child consistency and finite, non-empty geometry for all 168 nodes.
+- `npm test`: 16 passing tests. Twelve exercise the physical model; four check all nine equipment trees, bilingual content, parent/child consistency, finite geometry for all 168 nodes and distinct selectable winding, rotor and turbine-row entry points.
 - Model tests cover the cold state, prerequisite blocks, a complete energy cycle, conservation through load changes and shutdown, saturation, loss of circulation, residual heat, condenser admission blocking, pause, integration intervals, frame-rate independence, and a deterministic control sweep.
 - The primary liquid-only domain ends at 340 °C. A dedicated test checks that integration stops there without breaking the energy ledger, then recovers after circulation is restored.
 - `npm run build`: TypeScript and Vite production build pass. Vite reports the Three.js chunk above its 500 kB advisory threshold (approximately 134 kB gzip); this is not a measured performance benchmark.
@@ -29,3 +29,22 @@ Production is an assets-only Cloudflare Worker at <https://rep.keff.uk>. Public 
 The browser checks used the Codex in-app Chromium browser on Linux. Safari, Firefox, dedicated screen readers, touch hardware and low-end physical devices have not been tested. No frame-rate guarantee is made.
 
 The physics is an energy-conserving teaching model with reduced thermal inertia and imposed pressures. Geometry and quantities are schematic. It is not a plant operating procedure, accident simulator, engineering design or calibrated fuel-performance model. See `MODEL.md` for equations and omissions.
+
+## Spatial navigation revision
+
+Reviewed the plant-to-fuel-grain flow, its reverse path, the optional details panel and the narrow layout. The six better-interface domain skills informed the review. No additional repository design instructions were present.
+
+| Severity | Location | Before | Implemented change | Reason |
+| --- | --- | --- | --- | --- |
+| Medium | `src/scene.ts`, `setDetail` | Each selection disposed the previous scene and reset the camera. | Components occupy nested world coordinates. Camera movement and scale interpolate over 850 ms; the immediate parent remains as faint outlines. Returning restores the parent viewpoint. | The selected part remains spatially related to its assembly. |
+| Medium | `src/main.ts`, workspace | Explanations, four large measurements and a permanent inspector surrounded the drawing. | Exploration opens first. Details and measurements are disclosures; the drawing uses the full width when details are closed. | Prioritizes manipulation of the machine. |
+| Medium | `src/style.css`, mobile playback | French playback labels overlapped in the first revision. | Restart lives in Details; playback retains Run, speed and Measurements. | All controls fit at 320 px. |
+| Medium | `src/main.ts`, key handling | Escape was ignored when a button had focus. | Escape closes details or measurements, then ascends one level. Native selects and dialogs keep their own Escape handling. | Predictable keyboard recovery. |
+
+Browser checks used 1280 × 800 and 320 × 740. Verified seven nested levels, rapid successive navigation, reverse navigation, language switching, details opening/closing and the guided heating flow. Sequential screenshots captured distinct intermediate and final camera positions. The 320 px page had equal document/client width and no controls outside the horizontal viewport.
+
+Measured rendered text on white: primary text 14.37:1, muted text 5.43:1, accent text 7.21:1. These measurements cover the inspected text pairs, not every rendered pixel. Source inspection confirms a 120 ms opacity-only transition under reduced motion; OS-level reduced-motion emulation was unavailable in the test browser. Dedicated screen-reader and hardware touch testing remain unverified.
+
+Nested placement uses a representative annotated mesh when available and the parent centre otherwise. Detailed models and relative scales remain illustrations, not a dimensionally accurate nested CAD assembly. The physics equations are unchanged.
+
+Review verdict: no blocking issue remains in the inspected flow. Accessibility, layout, writing, typography, colour and UI behaviour were inspected in the source and browser as described above. Reduced-motion runtime behaviour and dedicated assistive-technology use remain unverified. Copy review was manual; no AI-writing detector or preservation validator was run.
