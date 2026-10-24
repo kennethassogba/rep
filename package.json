@@ -1,0 +1,28 @@
+{
+  "name": "rep-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "preview": "vite preview --host 0.0.0.0",
+    "package:worker": "node scripts/package-worker.mjs",
+    "deploy": "npm run build && npm run package:worker && cf deploy --prebuilt"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "cf": "^1.0.0-beta.21",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  },
+  "overrides": {
+    "undici": "7.30.1",
+    "zod": "4.6.7"
+  }
+}
