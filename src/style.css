@@ -221,7 +221,9 @@ svg {
 .meter-track i {
   display: block;
   height: 100%;
-  width: 0;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
   background: #ff6045;
 }
 #goal-caption {
@@ -794,7 +796,7 @@ dialog .drawer-top {
       transform 0.4s;
   }
   .meter-track i {
-    transition: width 0.15s;
+    transition: transform 0.15s;
   }
 }
 @media (max-width: 1050px) {

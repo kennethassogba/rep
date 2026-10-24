@@ -569,8 +569,8 @@ function updateUI() {
         : L("Power is rising…", "La puissance monte…");
   $<HTMLButtonElement>("next-action").disabled =
     !m.failed && !m.complete && !m.ready;
-  $("goal-fill").style.width =
-    `${Math.min(100, Math.max(0, (r.electric / TARGET_MW) * 100))}%`;
+  $("goal-fill").style.transform =
+    `scaleX(${Math.min(1, Math.max(0, r.electric / TARGET_MW))})`;
   $("goal-caption").textContent = m.complete
     ? L("Élysée lit. Dinner saved.", "Élysée allumé. Dîner sauvé.")
     : L("Light up the Élysée", "Rallume l’Élysée");
