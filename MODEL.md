@@ -1,6 +1,6 @@
 # Energy model
 
-All power is in MW, energy in MJ, time in model seconds, and temperatures in °C. The update uses explicit substeps of at most 0.02 s. Rendering does not control the constitutive equations. A long browser frame is limited to one wall-clock second; hidden tabs do not advance.
+All power is in MW, energy in MJ, time in model seconds, and temperatures in °C. The update uses explicit substeps of at most 0.02 s. Rendering does not control the constitutive equations. A long browser frame is limited to 0.25 wall-clock seconds; hidden tabs do not advance.
 
 ## State and imposed boundaries
 
@@ -25,7 +25,7 @@ The assumed cold initial state is already pressurized. This is a startup of the 
 
 ## Heat source
 
-Fission power approaches the permitted demand with a 3 s time constant (0.5 s after a teaching trip). The model represents the control-rod position as a visual consequence of heat demand, without reactivity or neutron kinetics.
+Fission power approaches the permitted demand with a 3 s time constant (0.5 s after a teaching trip). The physical heat lever represents demand; no reactivity or neutron kinetics are calculated.
 
 ```text
 Q_core = 0.94 P_fission + E_decay / 60
@@ -87,17 +87,21 @@ Losses include primary and secondary heat leakage, shaft friction and generator 
 
 ## Drawing and internal levels
 
-Nine trees contain 168 illustrated nodes. Rod counts, geometry and microstructure are representative, not construction drawings. Transparent housings and exploded spacing are explanatory. Fuel pellet/grain temperatures, tube-wall conduction profiles, mechanical stress, magnetic fields and detailed hydraulics are not solved. Values shown at deeper levels remain the parent equipment's mean values, explicitly labelled in Live values.
+Nine trees contain 168 illustrated nodes. Rod counts, geometry and microstructure are representative, not construction drawings. Transparent housings and exploded spacing are explanatory. Fuel pellet/grain temperatures, tube-wall conduction profiles, mechanical stress, magnetic fields and detailed hydraulics are not solved. Values shown in the information drawer remain labelled primary, secondary or condenser mean values. They are not local temperatures.
 
 Particles encode direction and relative flow, not molecule motion. Shaft animation is slowed for visibility. The operating-system reduced-motion preference stops these animations while retaining values and arrows. The cooling unit represents an ideal heat sink; it is not a detailed full-scale dry-cooler design.
 
 
 ## Immersive sections
 
-Exploration initially uses `operatingExample()`: the same model advances from the cold initial state for 360 model seconds, with all pumps at 1, heat demand 0.65, valve 0.7 and electrical load connected. Its energy ledger is retained. The first selection of Cold start resets to the cold state; switching between exploration and an already started lesson preserves its progress.
+The initial state is cold and inactive. The five physical controls set cooling/feed pumps to 1, primary pump to 1, heat demand to 0.65, steam valve to 0.7 and the isolated electrical load on. Their order helps expose cause and effect; continuous controls remain available in the information drawer. The existing `operatingExample()` function is retained only as a model test fixture.
 
-Split casings, lifted covers and section edges are explanatory drawing operations, not a disassembly procedure. The camera uses the selected mesh or instance transform. Successive models retain their parent's coordinates but are enlarged schematically; this is not nested CAD with engineering dimensions.
+The primary-start control waits for cooling and feed fractions of at least 0.75. Heat and steam controls use the physical model's gates. Electrical load becomes available above 400 rpm and 1 MW of admitted steam power. These are interface teaching gates, not real plant operating conditions. Active commands can always be switched off. Circulation can be restored at the model domain boundary.
+
+Split casings, lifted covers and section edges are explanatory drawing operations, not a disassembly procedure. The camera uses the selected mesh or instance transform. The first equipment view reuses the plant's actual geometry. Deeper detail is revealed at that location, with the parent fading to outlines. Relative dimensions remain schematic; this is not nested CAD with engineering dimensions.
 
 Internal routes are prescribed curves, not CFD results. Primary, feed and cooling transport uses the corresponding model flow fraction; steam transport uses admitted steam mass. Heat arrows use core heat, signed exchanger transfer or heat rejection. Transfer arrows reverse if the secondary becomes hotter than the primary. Electricity loops indicate electrical power, not electrons or a computed magnetic field. There is no independent animation clock. Pause, zero source rates and reduced motion stop particle travel. Rotor motion is slowed for readability.
 
-With Cutaway enabled, routes are drawn through occluding surfaces for legibility. The route positions still distinguish fluid inside a tube from fluid outside. Rod cooling water stays outside the cladding. Pellet and microscopic fuel views show heat-transfer direction only. Primary particle colours indicate the direction of heating or cooling, not a resolved local temperature field. Callouts show the equipment's mean temperature or shaft speed. Pressure is imposed; local pressurizer circulation, spray and heater dynamics receive no invented animated flow.
+With Cutaway enabled, routes are drawn through occluding surfaces for legibility. The route positions still distinguish fluid inside a tube from fluid outside. Rod cooling water stays outside the cladding. Pellet and microscopic fuel views show heat-transfer direction only. Primary particle colours indicate the direction of heating or cooling, not a resolved local temperature field. The optional information drawer shows explicitly labelled mean temperatures or shaft speed. Pressure is imposed; local pressurizer circulation, spray and heater dynamics receive no invented animated flow.
+
+The optional sound is synthesized from pump activity and shaft speed. It is an interaction cue, not an acoustic simulation or a recording of plant equipment.

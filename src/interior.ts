@@ -118,8 +118,8 @@ export class Interior {
   object = new T.Group();
   notes: Annotation[];
   streams: { route: Route; curve: T.CatmullRomCurve3; mesh: T.InstancedMesh; phase: number; arrows: T.Group }[] = [];
-  constructor(part: Part) {
-    const spec = interiorSpec(part);
+  constructor(part: Part | ReturnType<typeof interiorSpec>) {
+    const spec = 'routes' in part ? part : interiorSpec(part);
     this.notes = spec.notes;
     this.object.name = 'internal-transport';
     for (const route of spec.routes) {

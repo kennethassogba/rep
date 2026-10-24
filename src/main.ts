@@ -1,651 +1,602 @@
 import "./style.css";
 import "@fontsource-variable/dm-sans/wght.css";
-import { PlantScene } from "./scene";
-import { equipment, lessons, type EquipmentId } from "./content";
+import { MachineScene } from "./scene";
 import {
-  advance,
-  initialControls,
-  operatingExample,
   initialState,
+  initialControls,
+  advance,
   rates,
-  rpm,
   secondaryT,
-  steamEnergy,
-  heatBlock,
-  steamBlock,
-  rearm,
+  rpm,
   balanceError,
+  rearm,
+  type Controls,
 } from "./physics";
-import { roots, parts, tr, ancestry, type Lang, type Part } from "./parts";
 import {
-  lessonCopy,
-  translateBlock,
-  connectionLabels,
-  modelHTML,
-} from "./ui-copy";
+  actions,
+  availability,
+  operate,
+  nextAction,
+  type Action,
+} from "./startup";
+import { parts, roots, tr, ancestry, type Part, type Lang } from "./parts";
+import { modelHTML, translateBlock } from "./ui-copy";
 
-const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
-  document.getElementById(id) as T;
+const svg = (p: string) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const icons = {
+  plant: svg('<path d="M4 20V8l6 4V5l6 4V3h4v17Z M7 16h1m4 0h1m4 0h1"/>'),
+  cooling: svg(
+    '<path d="M12 11C8 3 3 6 6 10c1 2 3 2 6 2Zm1 1c8-4 5-9 1-6-2 1-2 3-2 6Zm-1 1c4 8 9 5 6 1-1-2-3-2-6-2Zm-1-1c-8 4-5 9-1 6 2-1 2-3 2-6Z"/><circle cx="12" cy="12" r="1.5"/>',
+  ),
+  primary: svg(
+    '<path d="M4 9a8 8 0 0 1 14-3l2 3m0-5v5h-5M20 15A8 8 0 0 1 6 18l-2-3m0 5v-5h5"/>',
+  ),
+  heat: svg(
+    '<path d="M9 3v10a5 5 0 1 0 6 0V3a3 3 0 0 0-6 0Z M12 8v9"/><circle cx="12" cy="17" r="1.5"/>',
+  ),
+  steam: svg(
+    '<path d="M3 12h4m10 0h4M12 3v4m0 10v4"/><circle cx="12" cy="12" r="7"/><path d="m9 8 6 4-6 4Z"/>',
+  ),
+  load: svg('<path d="m13 2-9 12h7l-1 8 10-12h-7Z"/>'),
+  cut: svg(
+    '<path d="m3 7 6-4 6 4-6 4Zm0 0v10l6 4V11m0 10 6-4V7m3-2 3 2v10l-3 2M18 10v5"/>',
+  ),
+  info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/>'),
+  back: svg('<path d="m14 5-7 7 7 7M7 12h14"/>'),
+  home: svg('<path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/>'),
+  play: svg('<path d="m8 4 12 8-12 8Z"/>'),
+  pause: svg('<path d="M8 5v14M16 5v14"/>'),
+  slow: svg(
+    '<path d="M4 16v-4a6 6 0 0 1 12 0v4H4Zm12-3h3l2 2-2 1h-3M7 17v2m6-2v2M5 9l5 3 5-3M10 6v6"/>',
+  ),
+  sound: svg(
+    '<path d="m11 4-5 4H3v8h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
+  ),
+  muted: svg('<path d="m11 4-5 4H3v8h3l5 4ZM16 9l6 6m0-6-6 6"/>'),
+  left: svg('<path d="M5 6v5h5M5 11a7 7 0 1 1 1 7"/>'),
+  right: svg('<path d="M19 6v5h-5m5 0a7 7 0 1 0-1 7"/>'),
+  minus: svg('<path d="M5 12h14"/>'),
+  plus: svg('<path d="M5 12h14M12 5v14"/>'),
+  reset: svg('<path d="m12 3 8 5v8l-8 5-8-5V8Zm-8 5 8 5 8-5m-8 5v8"/>'),
+  close: svg('<path d="m6 6 12 12M18 6 6 18"/>'),
+  check: svg('<path d="m5 12 4 4L19 6"/>'),
+  lock: svg(
+    '<rect x="6" y="10" width="12" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/>',
+  ),
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>'),
+  alert: svg('<path d="m12 3 10 18H2Z M12 9v5m0 3v.1"/>'),
+  part: svg('<path d="M6 3h12v18H6Zm0 5h12M6 16h12M10 3v18m4-18v18"/>'),
+};
+const labels: Record<Action, readonly [string, string]> = {
+  cooling: [
+    "Cooling and feed pumps",
+    "Pompes de refroidissement et d’alimentation",
+  ],
+  primary: ["Primary pump", "Pompe primaire"],
+  heat: ["Core heat", "Chaleur du cœur"],
+  steam: ["Steam admission", "Admission de vapeur"],
+  load: ["Electrical load", "Charge électrique"],
+};
 let lang: Lang = "en";
 try {
   lang = localStorage.getItem("rep-language") === "fr" ? "fr" : "en";
 } catch {}
 const L = (en: string, fr: string) => (lang === "en" ? en : fr);
-const fmt = (n: number, d = 0) =>
-  n.toLocaleString(lang === "en" ? "en-GB" : "fr-FR", {
-    maximumFractionDigits: d,
-    minimumFractionDigits: d,
-  });
-const example = operatingExample();
-let guidedStarted = false;
-let state = example.state,
-  controls = example.controls,
-  selected: EquipmentId = "reactor";
-let mode: "guided" | "free" = "free",
-  step = 0,
+const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
+  document.getElementById(id) as T;
+let state = initialState(),
+  controls = initialControls(),
   paused = false,
-  speed = 1,
-  acted = false,
-  completed = false,
+  slow = false,
   focused: Part | undefined;
-let scene: PlantScene | undefined,
-  renderElapsed = 0;
-let rearmNeedsAction = false;
-let inspectorOpen = false;
-const host = document.createElement("div");
-host.id = "scene";
-host.className = "scene";
-const icon = (p: string) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
-const cube = icon(
-  '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z M4 7.5l8 4.5 8-4.5 M12 12v9"/>',
-);
-const play = icon('<path d="m8 5 11 7-11 7V5Z"/>'),
-  pause = icon('<path d="M8 5v14M16 5v14"/>');
-const current = () => focused ?? parts.get(selected)!;
-function mount() {
+let scene: MachineScene | undefined,
+  lastNext: Action | undefined = "cooling",
+  lastTrip = "",
+  blocked: Action | undefined;
+let sound = false,
+  audio: AudioContext | undefined,
+  motor: OscillatorNode | undefined,
+  hum: GainNode | undefined;
+const app = $("app");
+app.innerHTML = `<main id="experience" tabindex="-1"><h1 class="sr-only"></h1><div id="scene"></div>
+<header class="topbar"><div class="identity"><button id="home" class="tool">${icons.plant}<span>01</span></button><button id="back" class="tool" hidden>${icons.back}</button><span id="depth" aria-hidden="true"></span></div><output id="power" class="power"><strong id="megawatts">0.0</strong><span>MW</span></output><div class="view-tools"><button id="section" class="tool" aria-pressed="true">${icons.cut}</button><button id="info" class="tool">${icons.info}</button></div></header>
+<div id="actuators" class="actuators">${actions.map((action, i) => `<button class="actuator" id="action-${action}" data-action="${action}" type="button"><span class="actuator-icon">${icons[action]}</span><svg class="progress" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22"/></svg><span class="action-state" aria-hidden="true"></span><span class="ordinal" aria-hidden="true">0${i + 1}</span></button>`).join("")}</div>
+<nav id="components" class="components" hidden></nav>
+<footer class="bottom-bar"><div class="playback"><button id="pause" class="tool">${icons.pause}</button><button id="slow" class="tool" aria-pressed="false">${icons.slow}</button><button id="sound" class="tool" aria-pressed="false">${icons.muted}</button></div><div class="camera"><button id="left" class="tool">${icons.left}</button><button id="right" class="tool">${icons.right}</button><button id="minus" class="tool">${icons.minus}</button><button id="plus" class="tool">${icons.plus}</button><button id="view-reset" class="tool">${icons.reset}</button></div></footer><p id="status" class="sr-only" role="status"></p><button id="trip" class="trip tool" hidden>${icons.alert}</button></main>
+<dialog id="inspector" aria-labelledby="part-title"><div class="drawer-top"><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select><button id="close-info" class="tool">${icons.close}</button></div><h2 id="part-title"></h2><p id="part-role"></p><p id="measurements"></p><div id="settings"></div><p id="reason"></p><button id="rearm" hidden></button><nav id="part-list"></nav><details id="model"><summary></summary><div id="model-content"></div></details><div class="drawer-foot"><button id="restart"></button><a href="https://github.com/kennethassogba/rep" target="_blank" rel="noreferrer">GitHub ↗</a></div></dialog>`;
+const setName = (id: string, en: string, fr: string) => {
+  $(id).setAttribute("aria-label", L(en, fr));
+  $(id).title = L(en, fr);
+};
+function localize() {
   document.documentElement.lang = lang;
-  document.title = L(
-    "REP · Pressurized water reactor",
-    "REP · Réacteur à eau pressurisée",
+  document.title = L("REP · Machine 01", "REP · Machine 01");
+  document.querySelector("h1")!.textContent = L(
+    "Start a pressurized-water power plant",
+    "Démarrer une centrale à eau pressurisée",
   );
-  $("app").innerHTML =
-    `<a class="skip" href="#inspector">${L("Skip to controls", "Aller aux commandes")}</a>
- <header><a class="brand" href="./" aria-label="REP">REP</a><h1 class="sr-only">${L("Pressurized water reactor", "Réacteur à eau pressurisée")}</h1>
- <div class="header-controls"><button id="info-toggle" aria-controls="inspector" aria-expanded="${inspectorOpen}">${L("Details", "Détails")}</button><label class="sr-only" for="mode">${L("Mode", "Mode")}</label><select id="mode"><option value="guided">${L("Cold start", "Démarrage à froid")}</option><option value="free">${L("Explore", "Explorer")}</option></select><button id="model-open">${L("Model", "Modèle")}</button><label class="sr-only" for="language">${L("Language", "Langue")}</label><select id="language" aria-label="Language / Langue"><option value="en">EN</option><option value="fr">FR</option></select></div></header>
- <main data-mode="${mode}"><section class="workspace" aria-label="${L("Interactive technical drawing", "Dessin technique interactif")}"><div class="drawing-top"><nav id="breadcrumbs" aria-label="${L("Exploration path", "Chemin d’exploration")}"></nav><div class="view-options"><button id="transparent" aria-pressed="${scene?.transparent ?? true}">${L("Cutaway", "Coupe")}</button><button id="explode" aria-pressed="${scene?.exploded ?? false}">${L("Explode", "Éclater")}</button><button id="labels" aria-pressed="${scene?.showLabels ?? false}">${L("Labels", "Repères")}</button></div></div>
- <div id="scene-slot"></div><div class="navigation"><div class="component-navigation"><div class="component-head"><label class="sr-only" for="equipment-picker">${L("Equipment", "Équipement")}</label><select id="equipment-picker">${roots.map((p) => `<option value="${p.id}">${tr(p.name, lang)}</option>`).join("")}</select></div><button id="level-up" class="level-up"></button><p id="part-path" hidden></p><h2 id="equipment-title"></h2><button id="open-component" class="open-component"></button><div id="children"></div><p id="leaf-note" hidden></p></div><section id="lesson"><div class="lesson-number"><span id="step-count"></span><button id="skip-guide">${L("Explore freely", "Explorer librement")} ↗</button></div><h2 id="lesson-title"></h2><p id="lesson-copy"></p><button id="lesson-action" class="primary-action"></button><p id="observation" role="status"></p><button id="next-step" hidden></button></section></div><div class="drawing-bottom"><span id="drawing-caption"></span><div class="camera-tools"><button id="rotate-left" aria-label="${L("Rotate left", "Tourner à gauche")}">↶</button><button id="rotate-right" aria-label="${L("Rotate right", "Tourner à droite")}">↷</button><button id="zoom-out" aria-label="${L("Zoom out", "Réduire le zoom")}">−</button><button id="zoom-in" aria-label="${L("Zoom in", "Augmenter le zoom")}">+</button><button id="camera-reset" aria-label="${L("Reset view", "Rétablir la vue")}">${cube}</button></div></div>
- <details class="measurements"><summary>${L("Measurements", "Mesures")}</summary><div class="telemetry" aria-label="${L("Plant measurements", "Mesures de la centrale")}"><div><span>${L("Core heat", "Chaleur du cœur")}</span><strong id="heat"></strong></div><div><span>${L("Primary water", "Eau primaire")}</span><strong id="primary-temp"></strong></div><div><span>${L("Secondary water", "Eau secondaire")}</span><strong id="secondary-temp"></strong></div><div><span>${L("Electrical output", "Production électrique")}</span><strong id="electric"></strong></div></div>
- </details><div class="playback"><button id="pause"></button><label class="sr-only" for="speed">${L("Playback speed", "Vitesse de lecture")}</label><select id="speed"><option value="0.25">× 0.25</option><option value="0.5">× 0.5</option><option value="1">× 1</option><option value="3">× 3</option></select><span id="clock"></span><span id="plant-state"></span></div></section>
- <aside id="inspector" tabindex="-1" ${inspectorOpen ? "" : "hidden"}><button id="info-close" aria-label="${L("Close details", "Fermer les détails")}">×</button>
- <section id="component"><h2 id="info-title"></h2><p id="equipment-role"></p><div id="controls"></div><p id="blockage" role="status"></p><button id="rearm" hidden></button><details id="live-values"><summary>${L("Live values", "Valeurs calculées")}</summary><div id="equipment-data"></div><p id="local-limit"></p></details><details id="connections-detail"><summary>${L("Connections", "Connexions")}</summary><div id="connections"></div></details></section>
- <div class="aside-foot"><button id="restart" title="${L("Restart the experiment", "Recommencer l’expérience")}">${L("Restart", "Recommencer")}</button><span>${L("Schematic · reduced thermal inertia", "Schéma · inerties thermiques réduites")}</span><a href="https://github.com/kennethassogba/rep" target="_blank" rel="noreferrer">${L("Source", "Code")} ↗</a></div></aside></main>
- <dialog id="model-dialog" aria-labelledby="model-title"><button id="model-close" class="dialog-close" aria-label="${L("Close", "Fermer")}">×</button>${modelHTML(lang)}</dialog>
- <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">${L("Restart the experiment?", "Recommencer l’expérience ?")}</h2><p>${L("Water returns to 20 °C, pumps stop and guided progress resets.", "L’eau revient à 20 °C, les pompes s’arrêtent et la progression est remise à zéro.")}</p><div class="dialog-actions"><button id="reset-cancel">${L("Keep exploring", "Continuer")}</button><button id="reset-confirm" class="primary-action">${L("Restart", "Recommencer")}</button></div></dialog>`;
-  $("scene-slot").replaceWith(host);
-  $<HTMLSelectElement>("mode").value = mode;
+  setName("home", "Whole machine", "Machine entière");
+  setName("back", "Go back one level", "Remonter d’un niveau");
+  setName("section", "Open the casings", "Ouvrir les enveloppes");
+  setName(
+    "info",
+    "Component, controls and model limits",
+    "Composant, commandes et limites du modèle",
+  );
+  setName("close-info", "Close", "Fermer");
+  setName("slow", "Quarter speed", "Vitesse divisée par quatre");
+  setName("sound", "Sound", "Son");
+  setName("left", "Rotate left", "Tourner à gauche");
+  setName("right", "Rotate right", "Tourner à droite");
+  setName("minus", "Zoom out", "Dézoomer");
+  setName("plus", "Zoom in", "Zoomer");
+  setName("view-reset", "Reset camera", "Recentrer la caméra");
+  setName(
+    "trip",
+    "Simulation stopped: show recovery steps",
+    "Simulation arrêtée : voir comment reprendre",
+  );
+  $("components").setAttribute(
+    "aria-label",
+    L("Internal components", "Composants internes"),
+  );
+  $("power").setAttribute(
+    "aria-label",
+    L(
+      "Gross electrical output in megawatts",
+      "Production électrique brute en mégawatts",
+    ),
+  );
+  scene?.renderer.domElement.setAttribute(
+    "aria-label",
+    L(
+      "Cutaway machine. Drag to orbit, click a component to enter it. Numbered buttons operate the circuits.",
+      "Machine en coupe. Glisser pour tourner, cliquer sur une pièce pour y entrer. Les boutons numérotés commandent les circuits.",
+    ),
+  );
   $<HTMLSelectElement>("language").value = lang;
-  $<HTMLSelectElement>("speed").value = String(speed);
-  $("language").onchange = (e) => {
-    lang = (e.target as HTMLSelectElement).value as Lang;
-    try {
-      localStorage.setItem("rep-language", lang);
-    } catch {}
-    mount();
-    $("language").focus({ preventScroll: true });
-  };
-  $("mode").onchange = (e) =>
-    setMode((e.target as HTMLSelectElement).value as "guided" | "free");
-  document.querySelector<HTMLAnchorElement>(".skip")!.onclick = (e) => {
-    e.preventDefault();
-    setInspector(true);
-  };
-  $("info-toggle").onclick = () => setInspector(!inspectorOpen);
-  $("info-close").onclick = () => setInspector(false);
-  $("level-up").onclick = () => drill(focused?.parent?.id);
-  $("skip-guide").onclick = () => setMode("free");
-  $("equipment-picker").onchange = (e) => {
-    drill((e.target as HTMLSelectElement).value);
-  };
-  $("lesson-action").onclick = () => {
-    if (step === 0) {
-      controls.cooling = 1;
-      controls.feed = 1;
-    }
-    if (step === 1) controls.primary = 1;
-    if (step === 2) controls.power = 0.65;
-    if (step === 3) controls.valve = 0.7;
-    if (step === 4) controls.generator = true;
-    acted = true;
-    completed = false;
-    setPaused(false);
-    select(lessons[step].equipment);
-    renderLesson();
-  };
-  $("next-step").onclick = () => {
-    if (step === 4) {
-      setMode("free");
-      return;
-    }
-    step++;
-    acted = false;
-    completed = false;
-    select(lessons[step].equipment);
-    renderLesson();
-  };
-  $("open-component").onclick = () => drill(selected);
-  $("pause").onclick = () => setPaused(!paused);
-  $("speed").onchange = (e) =>
-    (speed = Number((e.target as HTMLSelectElement).value));
-  $("rearm").onclick = () => {
-    rearmNeedsAction = !rearm(state, controls);
-    updateNumbers();
-  };
-  const dialog = $<HTMLDialogElement>("model-dialog");
-  $("model-open").onclick = () => dialog.showModal();
-  $("model-close").onclick = () => dialog.close();
-  const rd = $<HTMLDialogElement>("reset-dialog");
-  $("restart").onclick = () => rd.showModal();
-  $("reset-cancel").onclick = () => rd.close();
-  $("reset-confirm").onclick = () => {
-    state = initialState();
-    controls = initialControls();
-    step = 0;
-    acted = false;
-    completed = false;
-    mode = "guided";
-    guidedStarted = true;
-    speed = 1;
-    focused = undefined;
-    selected = "reactor";
-    scene?.setDetail();
-    setPaused(true);
-    rd.close();
-    mount();
-  };
-  if (!scene) {
-    try {
-      scene = new PlantScene(host, select);
-      scene.onDrill = (id) => drill(id);
-    } catch (error) {
-      host.innerHTML = `<p class="render-error">${L("3D is unavailable. Enable WebGL or try another browser. The experiment and component tree still work.", "La 3D est indisponible. Activez WebGL ou essayez un autre navigateur. L’expérience et l’arborescence restent utilisables.")}</p>`;
-      console.warn("WebGL unavailable", error);
-    }
-  }
-  if (scene) {
-    scene.setLanguage(lang);
-    scene.setDetail(focused, true);
-    scene.highlight(selected);
-    scene.update(state, controls, 0);
-  }
-  for (const id of [
-    "transparent",
-    "explode",
-    "labels",
-    "rotate-left",
-    "rotate-right",
-    "zoom-in",
-    "zoom-out",
-    "camera-reset",
-  ])
-    $<HTMLButtonElement>(id).disabled = !scene;
-  $("transparent").onclick = () => {
-    scene!.setTransparency(!scene!.transparent);
-    $("transparent").setAttribute("aria-pressed", String(scene!.transparent));
-  };
-  $("explode").onclick = () => {
-    scene!.setExploded(!scene!.exploded);
-    $("explode").setAttribute("aria-pressed", String(scene!.exploded));
-  };
-  $("labels").onclick = () => {
-    scene!.showLabels = !scene!.showLabels;
-    $("labels").setAttribute("aria-pressed", String(scene!.showLabels));
-    scene!.render();
-  };
-  $("rotate-left").onclick = () => scene!.rotate(-Math.PI / 6);
-  $("rotate-right").onclick = () => scene!.rotate(Math.PI / 6);
-  $("zoom-in").onclick = () => scene!.zoom(1.15);
-  $("zoom-out").onclick = () => scene!.zoom(1 / 1.15);
-  $("camera-reset").onclick = () => {
-    scene!.reset();
-  };
-  renderLesson();
-  renderEquipment();
-  renderCrumbs();
-  setPaused(paused);
+  navigation();
+  renderInspector();
+  updateUI();
 }
-function setInspector(open: boolean) {
-  inspectorOpen = open;
-  if (open)
-    document.querySelector<HTMLDetailsElement>(".measurements")!.open = false;
-  $("inspector").hidden = !open;
-  $("info-toggle").setAttribute("aria-expanded", String(open));
-  if (open) $("info-close").focus({ preventScroll: true });
-  else $("info-toggle").focus({ preventScroll: true });
+function announce(message: string) {
+  $("status").textContent = message;
 }
-function select(id: EquipmentId) {
-  selected = id;
-  scene?.highlight(id);
-  if (focused) {
-    focused = parts.get(id);
-    scene?.setDetail(focused);
-  }
-  renderEquipment();
-  renderCrumbs();
+function navigation() {
+  $("back").hidden = !focused;
+  $("depth").textContent = focused
+    ? ancestry(focused)
+        .map((_, i) => String(i + 1).padStart(2, "0"))
+        .join(" / ")
+    : "";
+  $("actuators").hidden = !!focused;
+  $("components").hidden = !focused || focused.children.length === 0;
+  $("components").innerHTML =
+    focused?.children
+      .map(
+        (p, i) =>
+          `<button class="component-control" data-part="${p.id}" aria-label="${L("Inspect", "Explorer")} ${tr(p.name, lang)}" title="${tr(p.name, lang)}">${icons.part}<span>${String(i + 1).padStart(2, "0")}</span></button>`,
+      )
+      .join("") ?? "";
+  $("components")
+    .querySelectorAll<HTMLButtonElement>("button")
+    .forEach((b) => (b.onclick = () => drill(b.dataset.part)));
+  document.querySelector("h1")!.textContent = focused
+    ? tr(focused.name, lang)
+    : L(
+        "Start a pressurized-water power plant",
+        "Démarrer une centrale à eau pressurisée",
+      );
 }
 function drill(id?: string) {
-  if (mode === "guided") setMode("free");
   focused = id ? parts.get(id) : undefined;
-  if (focused) selected = focused.equipment as EquipmentId;
   scene?.setDetail(focused);
-  scene?.highlight(selected);
-  renderEquipment();
-  renderCrumbs();
-  if (focused) $("equipment-title").focus({ preventScroll: true });
-  else $("equipment-picker").focus({ preventScroll: true });
-}
-function renderCrumbs() {
-  const trail = focused ? ancestry(focused) : [];
-  $("breadcrumbs").innerHTML =
-    `<button data-path="" ${!focused ? 'aria-current="location"' : ""}>${L("Plant", "Centrale")}</button>${trail.map((p, i) => `<span aria-hidden="true">/</span><button data-path="${p.id}" ${i === trail.length - 1 ? 'aria-current="location"' : ""}>${tr(p.name, lang)}</button>`).join("")}`;
-  $("breadcrumbs")
-    .querySelectorAll<HTMLButtonElement>("button")
-    .forEach((b) => (b.onclick = () => drill(b.dataset.path || undefined)));
-  $("drawing-caption").innerHTML = focused
-    ? L("Schematic routes · equipment mean values", "Trajets schématiques · moyennes de l’équipement")
-    : `<span class="legend"><i class="hot"></i>${L("Primary", "Primaire")}<i class="steam"></i>${L("Secondary", "Secondaire")}<i class="cold"></i>${L("Cooling", "Refroidissement")}</span>`;
-}
-function renderEquipment() {
-  const p = current();
-  $<HTMLSelectElement>("equipment-picker").value = selected;
-  document.querySelector<HTMLElement>(".component-head")!.hidden = !!focused;
-  $("equipment-title").hidden = !focused;
-  $("equipment-title").textContent = tr(p.name, lang);
-  $("info-title").textContent = tr(p.name, lang);
-  $("level-up").hidden = !focused;
-  $("level-up").textContent =
-    "← " +
-    (focused?.parent ? tr(focused.parent.name, lang) : L("Plant", "Centrale"));
-  $("level-up").setAttribute(
-    "aria-label",
-    L("Back to ", "Revenir à ") +
-      (focused?.parent
-        ? tr(focused.parent.name, lang)
-        : L("plant", "la centrale")),
+  navigation();
+  renderInspector();
+  announce(
+    focused ? tr(focused.name, lang) : L("Whole machine", "Machine entière"),
   );
-  $("equipment-title").setAttribute("tabindex", "-1");
-  $("part-path").textContent = focused
-    ? `${L("Level", "Niveau")} ${ancestry(p).length} / ${tr(parts.get(selected)!.name, lang)}`
-    : "";
-  $("equipment-role").textContent = tr(p.role, lang);
-  $("open-component").hidden = !!focused;
-  $("open-component").textContent = L("Enter", "Entrer") + " →";
-  $("children").innerHTML =
-    focused && p.children.length
-      ? `${p.children.map((c, i) => `<button data-child="${c.id}"><span class="part-number">${String(i + 1).padStart(2, "0")}</span><span>${tr(c.name, lang)}</span><span aria-hidden="true">→</span></button>`).join("")}`
-      : "";
-  $("children")
-    .querySelectorAll<HTMLButtonElement>("button")
-    .forEach((b) => {
-      b.onclick = () => drill(b.dataset.child);
-      b.onpointerenter = () => scene?.previewPart(b.dataset.child);
-      b.onpointerleave = () => scene?.previewPart();
-      b.onfocus = () => scene?.previewPart(b.dataset.child);
-      b.onblur = () => scene?.previewPart();
-    });
-  $("leaf-note").hidden = true;
-  $("leaf-note").textContent = L(
-    "Finest illustrated level. Use the path above to return to the assembly.",
-    "Dernier niveau illustré. Utilisez le chemin en haut pour remonter au sous-ensemble.",
-  );
-  const slider = (
-    key: "power" | "primary" | "cooling" | "feed" | "valve",
-    name: string,
-  ) =>
-    `<label class="range-label" for="control-${key}">${name}<output id="value-${key}">${fmt(controls[key] * 100)}%</output></label><input id="control-${key}" data-control="${key}" type="range" min="0" max="100" step="5" value="${controls[key] * 100}" aria-describedby="blockage">`;
-  let html = "";
-  if (mode === "free") {
-    if (selected === "reactor")
-      html = slider("power", L("Core heat demand", "Consigne de chaleur"));
-    if (selected === "primary")
-      html = slider("primary", L("Primary pump", "Pompe primaire"));
-    if (selected === "cooling" || selected === "condenser")
-      html = slider("cooling", L("Cooling pump", "Pompe de refroidissement"));
-    if (selected === "feed")
-      html = slider("feed", L("Feed pump", "Pompe alimentaire"));
-    if (selected === "turbine" || selected === "steam")
-      html = slider("valve", L("Steam admission", "Admission de vapeur"));
-    if (selected === "generator")
-      html = `<button id="generator-toggle" aria-pressed="${controls.generator}">${controls.generator ? L("Disconnect load", "Déconnecter la charge") : L("Connect load", "Connecter la charge")}</button>`;
-  }
-  $("controls").innerHTML = html;
-  $("controls")
-    .querySelectorAll<HTMLInputElement>("input")
-    .forEach(
-      (i) =>
-        (i.oninput = () => {
-          const key = i.dataset.control as
-            | "power"
-            | "primary"
-            | "cooling"
-            | "feed"
-            | "valve";
-          controls[key] = Number(i.value) / 100;
-          $(`value-${key}`).textContent = `${i.value}%`;
-          updateNumbers();
-        }),
+  (focused ? $("back") : $("home")).focus({ preventScroll: true });
+}
+function sync() {
+  scene?.syncControls(controls);
+  updateUI();
+  renderSettings();
+}
+function act(action: Action) {
+  const result = operate(action, state, controls);
+  blocked = result.ready ? undefined : action;
+  if (!result.ready) {
+    scene?.focusAction(result.requires);
+    announce(
+      `${tr(labels[action], lang)}. ${L("Required", "Requis")} : ${result.requires ? tr(labels[result.requires], lang) : L("restore circulation", "rétablir la circulation")}.`,
     );
-  if ($("generator-toggle"))
-    $("generator-toggle").onclick = () => {
-      controls.generator = !controls.generator;
-      renderEquipment();
-    };
-  $("connections").innerHTML = equipment[selected].connections
+  } else {
+    paused = false;
+    announce(
+      `${tr(labels[action], lang)} · ${result.active ? L("off", "arrêt") : L("on", "marche")}`,
+    );
+    clickSound();
+  }
+  sync();
+}
+for (const action of actions) {
+  const b = $(`action-${action}`);
+  b.onclick = () => act(action);
+  b.onfocus = () => scene?.focusAction(action);
+  b.onblur = () => scene?.focusAction();
+  b.onpointerenter = () => scene?.focusAction(action);
+  b.onpointerleave = () => scene?.focusAction();
+}
+$("home").onclick = () => drill();
+$("back").onclick = () => drill(focused?.parent?.id);
+$("section").onclick = () => {
+  if (!scene) return;
+  scene.setCutaway(!scene.cutaway);
+  $("section").setAttribute("aria-pressed", String(scene.cutaway));
+};
+$("pause").onclick = () => {
+  paused = !paused;
+  updateUI();
+};
+$("slow").onclick = () => {
+  slow = !slow;
+  $("slow").setAttribute("aria-pressed", String(slow));
+};
+$("left").onclick = () => scene?.rotate(-Math.PI / 8);
+$("right").onclick = () => scene?.rotate(Math.PI / 8);
+$("minus").onclick = () => scene?.zoom(1.16);
+$("plus").onclick = () => scene?.zoom(1 / 1.16);
+$("view-reset").onclick = () => scene?.resetView();
+const dialog = $<HTMLDialogElement>("inspector");
+function inspect() {
+  renderInspector();
+  dialog.showModal();
+}
+$("info").onclick = inspect;
+$("trip").onclick = inspect;
+$("close-info").onclick = () => dialog.close();
+$("language").onchange = () => {
+  lang = $<HTMLSelectElement>("language").value as Lang;
+  try {
+    localStorage.setItem("rep-language", lang);
+  } catch {}
+  localize();
+};
+$("restart").onclick = () => {
+  state = initialState();
+  controls = initialControls();
+  paused = false;
+  blocked = undefined;
+  lastNext = "cooling";
+  lastTrip = "";
+  drill();
+  dialog.close();
+  sync();
+  announce(L("Machine reset to 20 °C", "Machine remise à 20 °C"));
+};
+$("rearm").onclick = () => {
+  if (rearm(state, controls)) {
+    paused = false;
+    announce(L("Trip reset", "Arrêt réarmé"));
+  } else
+    announce(
+      L(
+        "Set heat to zero, restore all pumps and cool below 310 °C.",
+        "Ramener la chauffe à zéro, rétablir les pompes et refroidir sous 310 °C.",
+      ),
+    );
+  sync();
+  renderInspector();
+};
+function renderInspector() {
+  const p = focused ?? parts.get("reactor")!;
+  $("part-title").textContent = tr(p.name, lang);
+  $("part-role").textContent = tr(p.role, lang);
+  $("part-list").setAttribute(
+    "aria-label",
+    L("Browse components", "Parcourir les composants"),
+  );
+  $("part-list").innerHTML = (focused ? focused.children : roots)
     .map(
-      ([id, label]) =>
-        `<button data-connect="${id}"><span>${lang === "en" ? connectionLabels[label] : label}</span><strong>${tr(parts.get(id)!.name, lang)} ↗</strong></button>`,
+      (c) =>
+        `<button data-part="${c.id}">${tr(c.name, lang)} <span>↗</span></button>`,
     )
     .join("");
-  $("connections")
+  $("part-list")
     .querySelectorAll<HTMLButtonElement>("button")
     .forEach(
       (b) =>
         (b.onclick = () => {
-          const id = b.dataset.connect as EquipmentId;
-          selected = id;
-          focused = undefined;
-          scene?.setDetail();
-          select(id);
+          dialog.close();
+          drill(b.dataset.part);
         }),
     );
-  $("connections-detail").hidden = !!focused?.parent;
-  $("local-limit").textContent = focused?.parent
-    ? L(
-        "Equipment-level values. Local temperatures and stresses are not resolved.",
-        "Valeurs de l’équipement parent. Les températures et contraintes locales ne sont pas résolues.",
-      )
-    : L(
-        "Mean values from the simplified model.",
-        "Valeurs moyennes du modèle simplifié.",
-      );
-  $("rearm").textContent = L("Reset teaching trip", "Réarmer le modèle");
-  updateNumbers();
-}
-function setMode(m: "guided" | "free") {
-  mode = m;
-  if (m === "guided") {
-    if (!guidedStarted) {
-      state = initialState(); controls = initialControls(); guidedStarted = true;
-      setPaused(true); scene?.update(state, controls, 0);
-    }
-    focused = undefined;
-    selected = lessons[step].equipment;
-    scene?.setDetail();
-    scene?.highlight(selected);
-    renderCrumbs();
-  }
-  document.querySelector("main")!.setAttribute("data-mode", m);
-  $<HTMLSelectElement>("mode").value = m;
-  renderLesson();
-  renderEquipment();
-}
-function renderLesson() {
-  $("lesson").hidden = mode === "free";
-  const l = lessonCopy(lang, step);
-  $("step-count").textContent = `${String(step + 1).padStart(2, "0")} / 05`;
-  $("lesson-title").textContent = l.title;
-  $("lesson-copy").textContent = l.explain;
-  $("lesson-action").textContent = l.action;
-  $("lesson-action").hidden = acted;
-  $("next-step").hidden = !completed;
-  $("next-step").textContent =
-    (step === 4
-      ? L("Explore the plant", "Explorer la centrale")
-      : L("Next step", "Étape suivante")) + " →";
-  updateObservation();
-}
-function updateObservation() {
-  let msg = "";
-  if (acted && completed) msg = lessonCopy(lang, step).observe;
-  else if (acted && paused)
-    msg = L(
-      "Paused. Resume to observe the response.",
-      "En pause. Reprenez pour observer la réponse.",
-    );
-  else if (acted) {
-    if (state.trip) msg = translateBlock(state.trip, lang);
-    else if (step < 2)
-      msg = L(
-        "Flow is building up. Follow the direction arrows.",
-        "Le débit s’établit. Suivez les flèches de circulation.",
-      );
-    else if (step === 2)
-      msg = `${L("Secondary water", "Eau secondaire")} · ${fmt(secondaryT(state))} / 275 °C`;
-    else if (step === 3)
-      msg =
-        translateBlock(steamBlock(state), lang) ||
-        `${L("Shaft speed", "Vitesse de l’arbre")} · ${fmt(rpm(state))} ${L("rpm", "tr/min")}`;
-    else
-      msg = `${fmt(rates(state, controls).electric)} MW ${L("electrical", "électriques")}`;
-  }
-  $("observation").hidden = !msg;
-  if ($("observation").textContent !== msg) $("observation").textContent = msg;
-}
-function setPaused(value: boolean) {
-  paused = value;
-  renderElapsed = 0;
-  $("pause").innerHTML =
-    `${paused ? play : pause}<span>${paused ? L("Run", "Reprendre") : L("Pause", "Pause")}</span>`;
-  $("pause").setAttribute(
-    "aria-label",
-    paused
-      ? L("Run simulation", "Reprendre la simulation")
-      : L("Pause simulation", "Mettre la simulation en pause"),
+  $("model").querySelector("summary")!.textContent = L(
+    "Model & limits",
+    "Modèle et limites",
   );
-  updateObservation();
-  updateNumbers();
+  $("model-content").innerHTML = modelHTML(lang);
+  $("restart").textContent = L(
+    "Reset experiment",
+    "Réinitialiser l’expérience",
+  );
+  $("rearm").textContent = L("Reset teaching trip", "Réarmer le modèle");
+  renderSettings();
 }
-function updateNumbers() {
-  const r = rates(state, controls);
-  $("heat").innerHTML = `${fmt(r.heat)} <small>MW</small>`;
-  $("primary-temp").innerHTML = `${fmt(state.primaryT)} <small>°C</small>`;
-  $("secondary-temp").innerHTML = `${fmt(secondaryT(state))} <small>°C</small>`;
-  $("electric").innerHTML = `${fmt(r.electric)} <small>MW</small>`;
-  $("clock").textContent = `${fmt(state.time)} ${L("model s", "s modèle")}`;
-  $("plant-state").textContent = state.trip
-    ? L("Teaching trip", "Arrêt pédagogique")
-    : paused
-      ? L("Paused", "En pause")
-      : r.electric > 1
-        ? L("Generating", "Production")
-        : r.heat > 1
-          ? L("Heating", "En chauffe")
-          : state.primaryFlow > 0.1 || state.coolingFlow > 0.1
-            ? L("Circulating", "En circulation")
-            : L("Stopped", "À l’arrêt");
-  let data: [string, string][] = [];
-  switch (selected) {
-    case "reactor":
-      data = [
-        [L("Core heat", "Chaleur du cœur"), `${fmt(r.heat)} MW`],
-        [L("Residual heat", "Chaleur résiduelle"), `${fmt(r.decay, 1)} MW`],
-      ];
-      break;
-    case "pressurizer":
-      data = [
-        [L("Imposed pressure", "Pression imposée"), "155 bar"],
-        [L("Primary mean", "Moyenne primaire"), `${fmt(state.primaryT)} °C`],
-      ];
-      break;
-    case "primary":
-      data = [
-        [L("Primary flow", "Débit primaire"), `${fmt(r.primaryMass)} kg/s`],
-        [L("Heat transfer", "Chaleur transférée"), `${fmt(r.exchange)} MW`],
-      ];
-      break;
-    case "steam":
-      data = [
-        [
-          L("Secondary water", "Eau secondaire"),
-          `${fmt(secondaryT(state))} °C`,
-        ],
-        [
-          L("Latent reserve", "Réserve latente"),
-          `${fmt(steamEnergy(state))} MJ`,
-        ],
-      ];
-      break;
-    case "turbine":
-      data = [
-        [
-          L("Shaft speed", "Vitesse de l’arbre"),
-          `${fmt(rpm(state))} ${L("rpm", "tr/min")}`,
-        ],
-        [L("Steam flow", "Débit vapeur"), `${fmt(r.steamMass)} kg/s`],
-      ];
-      break;
-    case "generator":
-      data = [
-        [L("Gross output", "Production brute"), `${fmt(r.electric)} MW`],
-        [
-          L("Load", "Charge"),
-          controls.generator
-            ? L("Connected", "Connectée")
-            : L("Disconnected", "Déconnectée"),
-        ],
-      ];
-      break;
-    case "condenser":
-      data = [
-        [L("Temperature", "Température"), `${fmt(state.condenserT, 1)} °C`],
-        [
-          L("Heat to reject", "Chaleur à évacuer"),
-          `${fmt(r.admitted - r.mechanical)} MW`,
-        ],
-      ];
-      break;
-    case "feed":
-      data = [
-        [L("Water return", "Retour d’eau"), `${fmt(r.steamMass)} kg/s`],
-        [
-          L("Pump", "Pompe"),
-          state.feedFlow > 0.25
-            ? L("Running", "En marche")
-            : L("Stopped", "Arrêtée"),
-        ],
-      ];
-      break;
-    case "cooling":
-      data = [
-        [L("Heat rejected", "Chaleur évacuée"), `${fmt(r.rejected)} MW`],
-        [L("Cooling flow", "Débit froid"), `${fmt(r.coolingMass)} kg/s`],
-      ];
-      break;
-  }
-  $("equipment-data").innerHTML = data
-    .map(([a, b]) => `<div><span>${a}</span><strong>${b}</strong></div>`)
-    .join("");
-  let block = state.outsideModel
-    ? L(
-        "Model boundary: 340 °C. Primary boiling is not simulated. Restore the primary pump to 100%, keep cooling on, then resume. The trip remains latched until you reset it.",
-        "Limite du modèle : 340 °C. L’ébullition primaire n’est pas simulée. Rétablissez la pompe primaire à 100 %, gardez le refroidissement, puis reprenez. L’arrêt reste verrouillé jusqu’au réarmement.",
+function renderSettings() {
+  const ranges: [keyof Controls, string, string][] = [
+    ["cooling", "Cooling", "Refroidissement"],
+    ["feed", "Feed pump", "Pompe alimentaire"],
+    ["primary", "Primary pump", "Pompe primaire"],
+    ["power", "Core heat demand", "Demande de chauffe"],
+    ["valve", "Steam admission", "Admission de vapeur"],
+  ];
+  $("settings").innerHTML =
+    ranges
+      .map(
+        ([id, en, fr]) =>
+          `<label class="range-row" for="set-${id}"><span>${L(en, fr)}</span><output id="value-${id}">${Math.round(Number(controls[id]) * 100)} %</output><input id="set-${id}" type="range" min="0" max="100" step="1" value="${Math.round(Number(controls[id]) * 100)}"></label>`,
       )
-    : state.trip;
-  if (!block && selected === "reactor") block = heatBlock(state);
-  if (!block && (selected === "turbine" || selected === "steam"))
-    block = steamBlock(state);
-  if (!block && selected === "generator" && rpm(state) < 1)
-    block = L(
-      "The shaft is stationary. Generate steam, then open turbine admission.",
-      "L’arbre est immobile. Produisez de la vapeur, puis ouvrez l’admission.",
-    );
-  if (
-    !block &&
-    selected === "feed" &&
-    state.feedFlow > 0.25 &&
-    r.steamMass < 0.1
-  )
-    block = L(
-      "The pump is ready. Water return begins with steam admission.",
-      "La pompe est prête. Le retour commence avec l’admission de vapeur.",
-    );
-  const translated =
-    rearmNeedsAction && state.trip && !state.outsideModel
+      .join("") +
+    `<label class="load-row"><input id="set-generator" type="checkbox" ${controls.generator ? "checked" : ""}>${L("Electrical load", "Charge électrique")}</label>`;
+  for (const [id] of ranges)
+    $(`set-${id}`).oninput = (e) => {
+      (controls[id] as number) =
+        Number((e.target as HTMLInputElement).value) / 100;
+      $(`value-${id}`).textContent =
+        `${Math.round(Number(controls[id]) * 100)} %`;
+      scene?.syncControls(controls);
+      updateUI();
+    };
+  $("set-generator").onchange = (e) => {
+    controls.generator = (e.target as HTMLInputElement).checked;
+    scene?.syncControls(controls);
+    updateUI();
+  };
+  $("rearm").hidden = !state.trip;
+  $("reason").textContent = state.trip
+    ? translateBlock(state.trip, lang)
+    : state.outsideModel
       ? L(
-          "Set heat to 0%, restore all three pumps and wait for primary temperature below 310 °C.",
-          "Consigne à 0 %, trois pompes en marche, primaire sous 310 °C.",
+          "Restore primary circulation, then resume. The liquid-only model stops at 340 °C.",
+          "Rétablir le débit primaire puis reprendre. Le modèle liquide s’arrête à 340 °C.",
         )
-      : translateBlock(block, lang);
-  if ($("blockage").textContent !== translated)
-    $("blockage").textContent = translated;
-  $("blockage").hidden = !block || (mode === "guided" && !state.outsideModel);
-  $("rearm").hidden = !state.trip || mode !== "free";
-  if ($("balance"))
-    $("balance").textContent = balanceError(state).toExponential(2);
+      : L(
+          "Schematic geometry. Reduced thermal inertia. Circuit pressures are imposed.",
+          "Géométrie schématique. Inerties thermiques réduites. Pressions des circuits imposées.",
+        );
 }
-mount();
-let previous = performance.now(),
-  uiElapsed = 0,
-  obsElapsed = 0;
-let pageWasHidden = false;
-document.addEventListener("visibilitychange", () => {
-  previous = performance.now();
-  pageWasHidden = document.hidden;
-});
+function project() {
+  if (!scene || focused) return;
+  for (const action of actions) {
+    const p = scene.actionPoint(action),
+      b = $(`action-${action}`);
+    b.style.setProperty(
+      "--x",
+      `${Math.max(30, Math.min(innerWidth - 30, p.x))}px`,
+    );
+    b.style.setProperty(
+      "--y",
+      `${Math.max(110, Math.min(innerHeight - 120, p.y))}px`,
+    );
+  }
+}
+function updateUI() {
+  const r = rates(state, controls),
+    next = nextAction(state, controls);
+  $("megawatts").textContent = r.electric.toLocaleString("en-GB", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  $("power").setAttribute("data-active", String(r.electric >= 1));
+  $("pause").innerHTML = paused ? icons.play : icons.pause;
+  setName(
+    "pause",
+    paused ? "Resume simulation" : "Pause simulation",
+    paused ? "Reprendre la simulation" : "Mettre la simulation en pause",
+  );
+  for (const a of actions) {
+    const b = $(`action-${a}`),
+      v = availability(a, state, controls),
+      stateName = v.active
+        ? "active"
+        : v.ready
+          ? "ready"
+          : a === "steam" && controls.power > 0
+            ? "waiting"
+            : "blocked";
+    b.dataset.state = stateName;
+    b.dataset.next = String(a === next);
+    b.dataset.blocked = String(a === blocked);
+    b.setAttribute("aria-pressed", String(v.active));
+    b.setAttribute("aria-disabled", String(!v.ready));
+    const name = `${tr(labels[a], lang)} · ${v.active ? L("stop", "arrêter") : L("start", "démarrer")}${!v.ready && v.requires ? ` · ${L("requires", "nécessite")} ${tr(labels[v.requires], lang)}` : ""}`;
+    b.setAttribute("aria-label", name);
+    b.title = name;
+    b.querySelector(".action-state")!.innerHTML =
+      stateName === "active"
+        ? icons.check
+        : stateName === "waiting"
+          ? icons.clock
+          : stateName === "blocked"
+            ? icons.lock
+            : "";
+    const progress =
+      a === "cooling"
+        ? Math.min(state.coolingFlow, state.feedFlow)
+        : a === "primary"
+          ? state.primaryFlow
+          : a === "heat"
+            ? Math.max(0, (secondaryT(state) - 20) / 255)
+            : a === "steam"
+              ? Math.min(1, rpm(state) / 400)
+              : r.electric > 1
+                ? 1
+                : 0;
+    (
+      b.querySelector(".progress circle") as SVGCircleElement
+    ).style.strokeDasharray = `${progress * 138.23} 138.23`;
+  }
+  if (next !== lastNext) {
+    lastNext = next;
+    blocked = undefined;
+    announce(
+      next
+        ? `${L("Next", "Suite")} : ${tr(labels[next], lang)}`
+        : L(
+            "Electrical power is being produced. Every circuit remains adjustable.",
+            "La centrale produit de l’électricité. Chaque circuit reste réglable.",
+          ),
+    );
+  }
+  $("trip").hidden = !state.trip && !state.outsideModel;
+  if (state.trip !== lastTrip) {
+    lastTrip = state.trip;
+    if (state.trip) announce(translateBlock(state.trip, lang));
+  }
+  const balance = document.getElementById("balance");
+  if (balance) balance.textContent = balanceError(state).toExponential(2);
+  if (dialog.open) {
+    const equipment = focused?.equipment;
+    const temp =
+      equipment === "steam"
+        ? secondaryT(state)
+        : ["condenser", "cooling", "feed"].includes(equipment ?? "")
+          ? state.condenserT
+          : state.primaryT;
+    $("measurements").textContent =
+      equipment === "pressurizer"
+        ? L("Imposed pressure: 155 bar", "Pression imposée : 155 bar")
+        : equipment === "generator" || equipment === "turbine"
+          ? `${Math.round(rpm(state))} rpm · ${r.electric.toFixed(1)} MW`
+          : `${equipment === "steam" ? L("Secondary mean", "Moyenne secondaire") : ["condenser", "cooling", "feed"].includes(equipment ?? "") ? L("Condenser mean", "Moyenne condenseur") : L("Primary mean", "Moyenne primaire")} : ${temp.toFixed(1)} °C · ${L("Core heat", "Chaleur du cœur")} : ${r.heat.toFixed(0)} MW`;
+    $("rearm").hidden = !state.trip;
+    if (state.trip) $("reason").textContent = translateBlock(state.trip, lang);
+  }
+}
+function clickSound() {
+  if (!audio || !sound) return;
+  const oscillator = audio.createOscillator(),
+    gain = audio.createGain();
+  oscillator.type = "square";
+  oscillator.frequency.setValueAtTime(170, audio.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(
+    55,
+    audio.currentTime + 0.035,
+  );
+  gain.gain.setValueAtTime(0.04, audio.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.045);
+  oscillator.connect(gain).connect(audio.destination);
+  oscillator.start();
+  oscillator.stop(audio.currentTime + 0.05);
+  oscillator.onended = () => {
+    oscillator.disconnect();
+    gain.disconnect();
+  };
+}
+$("sound").onclick = async () => {
+  sound = !sound;
+  if (sound && !audio) {
+    audio = new AudioContext();
+    motor = audio.createOscillator();
+    hum = audio.createGain();
+    motor.type = "sine";
+    hum.gain.value = 0;
+    motor.connect(hum).connect(audio.destination);
+    motor.start();
+  }
+  if (sound) await audio?.resume();
+  $("sound").setAttribute("aria-pressed", String(sound));
+  $("sound").innerHTML = sound ? icons.sound : icons.muted;
+};
+try {
+  scene = new MachineScene($("scene"));
+  scene.onAction = act;
+  scene.onDrill = drill;
+  scene.onProject = project;
+  scene.syncControls(controls);
+} catch (error) {
+  $("scene").innerHTML =
+    `<p class="render-error">${L("3D unavailable. Enable WebGL or try another browser. Controls remain in ⓘ.", "3D indisponible. Activer WebGL ou essayer un autre navigateur. Les commandes restent disponibles dans ⓘ.")}</p>`;
+  console.error(error);
+}
+localize();
+project();
 document.addEventListener("keydown", (e) => {
-  if (document.querySelector("dialog[open]")) return;
-  const target = e.target as HTMLElement;
-  if (e.key === "Escape" && !target.matches("select")) {
-    if (inspectorOpen) {
-      setInspector(false);
-      return;
-    }
-    const measurements =
-      document.querySelector<HTMLDetailsElement>(".measurements");
-    if (measurements?.open) {
-      measurements.open = false;
-      return;
-    }
-    if (focused) {
-      drill(focused.parent?.id);
-      return;
-    }
-  }
-  if (target.matches("input,select,textarea,button,summary")) return;
-  if (e.code === "Space") {
+  if (
+    dialog.open ||
+    e.target instanceof HTMLInputElement ||
+    e.target instanceof HTMLSelectElement
+  )
+    return;
+  if (e.code === "Space" && !(e.target instanceof HTMLButtonElement)) {
     e.preventDefault();
-    setPaused(!paused);
+    paused = !paused;
+    updateUI();
   }
+  if (e.key === "Escape" && focused) {
+    e.preventDefault();
+    drill(focused.parent?.id);
+  }
+  if (e.target === $("experience") || e.target === scene?.renderer.domElement) {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      scene?.rotate(-Math.PI / 12);
+    }
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      scene?.rotate(Math.PI / 12);
+    }
+    if (e.key === "+") scene?.zoom(0.9);
+    if (e.key === "-") scene?.zoom(1.1);
+  }
+});
+let previous = performance.now(),
+  uiTime = 0,
+  hidden = document.hidden;
+document.addEventListener("visibilitychange", () => {
+  hidden = document.hidden;
+  previous = performance.now();
+  if (hidden && hum && audio)
+    hum.gain.setTargetAtTime(0, audio.currentTime, 0.05);
 });
 function frame(now: number) {
-  scene?.animateNavigation(now);
-  const elapsed = Math.min((now - previous) / 1000, 1);
+  const elapsed = Math.min(0.25, (now - previous) / 1000);
   previous = now;
-  const dt = paused || document.hidden || pageWasHidden ? 0 : elapsed * speed;
-  const previousModelTime = state.time;
+  const dt = paused || hidden ? 0 : elapsed * (slow ? 0.25 : 1);
   if (dt > 0) state = advance(state, controls, dt);
-  renderElapsed += state.time - previousModelTime;
-  if (renderElapsed >= 1 / 30) {
-    scene?.update(state, controls, renderElapsed);
-    renderElapsed = 0;
-  }
   if (state.outsideModel && !paused) {
-    setPaused(true);
-    setInspector(true);
+    paused = true;
+    announce(
+      L(
+        "Model limit reached. Restore circulation using the controls in information.",
+        "Limite du modèle atteinte. Rétablir la circulation dans les commandes du panneau d’information.",
+      ),
+    );
   }
-  if (mode === "guided" && acted && !completed && lessons[step].ready(state)) {
-    completed = true;
-    renderLesson();
+  scene?.update(state, controls, dt, now);
+  uiTime += elapsed;
+  if (uiTime > 0.15) {
+    updateUI();
+    uiTime = 0;
   }
-  uiElapsed += elapsed;
-  obsElapsed += elapsed;
-  if (uiElapsed > 0.25) {
-    updateNumbers();
-    uiElapsed = 0;
-  }
-  if (obsElapsed > 3) {
-    updateObservation();
-    obsElapsed = 0;
+  if (audio && hum && motor) {
+    const activity =
+      (state.primaryFlow + state.coolingFlow + state.feedFlow) / 3;
+    hum.gain.setTargetAtTime(
+      sound && !paused && !hidden
+        ? Math.min(0.024, activity * 0.016 + rpm(state) / 200000)
+        : 0,
+      audio.currentTime,
+      0.12,
+    );
+    motor.frequency.setTargetAtTime(
+      42 + rpm(state) / 80,
+      audio.currentTime,
+      0.15,
+    );
   }
   requestAnimationFrame(frame);
 }

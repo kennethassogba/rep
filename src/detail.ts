@@ -80,7 +80,7 @@ function hatch(g: T.Group, w: number, h: number, z: number) {
     );
   }
 }
-function bladeGeometry(fan: boolean) {
+export function bladeGeometry(fan: boolean) {
   // A swept, tapered airfoil, lofted along its span. Counts and profile are illustrative.
   const section = [[-0.12, -0.035], [-0.04, -0.065], [0.13, -0.03], [0.2, 0.012], [0.035, 0.055], [-0.12, 0.02]];
   const positions: number[] = [], indices: number[] = [];

@@ -6,15 +6,24 @@ An interactive pressurized-water reactor, from the complete plant to fuel pellet
 
 English by default; French is available from the language menu. The simulation runs in the browser. There are no accounts, analytics, remote simulation services or paid APIs.
 
-## Explore
+## Operate and explore
 
-- Explore opens on a running plant computed from 360 model seconds of warm-up. Choose Cold start to run the energy cycle from 20 °C in five steps.
-- Click equipment in the drawing to enter it, then choose an internal part. Casings separate before the camera enters. It follows the picked physical instance and keeps the parent as faint outlines. Use the back button, path or Escape to return.
-- Nine equipment trees contain 168 nodes, with four to seven levels per tree. Geometry is schematic; repeated physical components share representative views.
-- Internal routes show primary water, steam, cooling water and heat crossing boundaries. Flow stops with the model; pause and reduced motion retain static direction cues.
-- Rotate, zoom, use cutaway and exploded views. Labels are optional.
-- Pause or change playback speed. Space controls playback outside form controls; Escape moves up one component level. Buttons and component lists provide keyboard alternatives to dragging and picking.
-- Open Details for the component role, controls and connections; open Measurements for plant values. Both stay closed while exploring unless requested.
+The machine opens cold at 20 °C. Five numbered controls sit beside the equipment they operate:
+
+1. Start cooling and feedwater circulation.
+2. Start the primary pump.
+3. Apply core heat. Watch water warm and the steam reserve form.
+4. Admit steam to turn the turbine.
+5. Connect the electrical load.
+
+The sequence is educational. Availability follows the simulated temperatures, flows and shaft speed. A locked control identifies its prerequisite; a progress ring shows heating or rotation. Commands remain reversible. Pump loss can trip the heat source, and the information drawer explains recovery.
+
+- Click a piece to enter it. The existing equipment opens as the camera approaches. Deeper geometry occupies the selected part's coordinates, with the parent retained as faint outlines.
+- Nine equipment trees contain 168 nodes, with four to seven levels per tree. Repeated components share representative detailed views.
+- Primary water, steam, cooling water and heat move through the machine. Their animation uses model rates. Pause and reduced motion retain static direction cues.
+- Drag to orbit; use the camera controls to rotate and zoom. Focus the canvas and use arrow keys or +/−. Escape returns one level.
+- Pause, quarter speed and optional synthesized machine sound are available below the scene. Sound starts off.
+- The information button opens component roles, continuous controls, equipment mean measurements, English/French selection and model limits. The main workspace contains pictograms and numbers.
 
 The top-level components are the vessel, pressurizer, primary pump, steam generator, turbine, generator, condenser, feed pump and cooling system. Internal levels include core → assembly → rod → pellet → ceramic → grain, pump stage → impeller → vane, and generator rotor/stator → winding → conductor → insulation.
 
@@ -24,7 +33,7 @@ Energy is conserved across thermal reservoirs, steam storage, the shaft, residua
 
 **This is a teaching model, not an operating simulator.** The circuits start under imposed pressure. Effective thermal masses are reduced, so model seconds have no fixed conversion to plant time. Local fuel temperatures, water levels, pressure dynamics, neutronics, stresses, magnetic fields and accident behaviour are not solved. Detailed geometry does not imply detailed local physics.
 
-See [MODEL.md](MODEL.md) for equations, parameters and omissions. The same limits are available from **Model** in the app.
+See [MODEL.md](MODEL.md) for equations, parameters and omissions. The same limits are available under **Model & limits** in the information drawer.
 
 ## Run locally
 
@@ -61,6 +70,7 @@ GitHub Actions runs model/geometry tests, the production build, packaging and th
 
 - [NRC: Pressurized water reactors](https://www.nrc.gov/reactors/power/pwrs)
 - [NRC: Reactor Concepts Manual, PWR systems](https://www.nrc.gov/sites/default/files/doc_library/cdn/legacy/reading-rm/basic-ref/students/for-educators/04.pdf)
-- [Colorfigures by April Zhu](https://april-zhu.com/colorfigures), the visual reference for inked isometric objects and internal views. Geometry and implementation here are original.
+- [Video reference](https://x.com/visegrad24/status/1991511558992916580): Concorde and Ariane footage informed the current industrial direction: enamel white, navy, signal orange and exposed metal. No video assets are included.
+- [Colorfigures by April Zhu](https://april-zhu.com/colorfigures) informed the earlier inked cutaway exploration. Geometry and implementation are original.
 
 [Validation notes](docs/VALIDATION.md) distinguish automated tests from browser inspection.

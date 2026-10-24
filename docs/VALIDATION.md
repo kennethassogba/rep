@@ -1,69 +1,45 @@
 # Validation
 
-Checked on 24 October 2026. This records software checks, not scientific qualification.
+Checked on 24 October 2026 for the industrial-machine rebuild. These are software and interface checks, not scientific qualification.
 
 ## Automated checks
 
-- `npm test`: 23 passing tests. Seven exercise internal transport and section navigation; twelve exercise the physical model; four check all nine equipment trees, bilingual content, parent/child consistency, finite geometry for all 168 nodes and distinct selectable winding, rotor and turbine-row entry points.
-- Model tests cover the cold state, prerequisite blocks, a complete energy cycle, conservation through load changes and shutdown, saturation, loss of circulation, residual heat, condenser admission blocking, pause, integration intervals, frame-rate independence, and a deterministic control sweep.
-- The primary liquid-only domain ends at 340 °C. A dedicated test checks that integration stops there without breaking the energy ledger, then recovers after circulation is restored.
-- `npm run build`: TypeScript and Vite production build pass. Vite reports the Three.js chunk above its 500 kB advisory threshold (approximately 134 kB gzip); this is not a measured performance benchmark.
-- `npm run package:worker`: static Worker package generated successfully.
-- `npm audit`: zero reported vulnerabilities, including development dependencies, at the time checked.
+- `npm test`: 28 passing tests. Twelve check the physical model, four check the 168-node hierarchy and geometry, seven check internal transport and section behaviour, three check the new startup controls, and two check the physical plant and its native internal routes.
+- The startup test operates the five controls from a cold state, waits for physical prerequisites, and reaches electrical production without substituting a prepared state. It also checks that premature commands leave controls unchanged and that circulation can be restored at the liquid-model boundary.
+- Conservation, shutdown heat, pump-loss trips, cooling loss, pause, frame-step independence, finite geometry, picked-instance transforms and reversible opening poses are covered. This does not validate the equations against a real plant.
+- TypeScript and the Vite production build pass. The Three.js chunk is approximately 135 kB gzip; Vite reports its uncompressed size above the 500 kB advisory threshold. No frame-rate guarantee follows from this result.
+- Cloudflare static-asset packaging passes. `npm audit` reports zero vulnerabilities, including development dependencies, at the time checked.
+
+## Browser checks
+
+Checked in the Codex Chromium browser on Linux, at 1280 × 720/800 and 320 × 740.
+
+- Completed the five-control startup in French and English. Observed steam becoming available after heating, shaft acceleration, electrical-load availability and nonzero output. A transient output peak after connecting the load comes from stored shaft energy; the model explicitly permits it.
+- A premature primary-pump command remained blocked and identified cooling/feed circulation as its prerequisite. Pause preserved the displayed power throughout nested exploration. Quarter speed and optional sound toggles changed state without console errors; acoustic accuracy is not claimed.
+- Opened the native reactor and generator. Navigated reactor → core → assembly → rod → pellet → ceramic → grain, and generator → stator. Verified Escape ascent, rapid successive selections, component lists and the information drawer.
+- Verified language switching, slider keyboard input and synchronized control values when opening the drawer. English is the default when no saved preference exists.
+- The 320 px layout has no horizontal document overflow. Physical controls become a five-button dock; playback and camera controls remain separate. The information drawer scrolls within the viewport.
+- No browser warnings or errors appeared in the inspected session. Visual checks cover representative views, not every one of the 168 nodes.
 
 ## Interface review
 
-Reviewed with the better-interface domains: accessibility, colours, layout, typography, UI behaviour and writing. English and French use the same controls and preserve simulation state during language changes.
+Reviewed with better-interface and avoid-ai-writing: accessibility, colour, layout, typography, UI behaviour and copy.
 
-- **Accessibility:** native selects, labelled ranges, visible keyboard focus, skip link, focus on the selected component heading, native dialogs and keyboard camera controls. Verified slider keyboard input, Escape navigation, dialog focus and alternative component selection without canvas picking.
-- **Layout:** one primary drawing with an adjacent inspector. Equipment controls follow the selected component. Internal parts, values and connections are progressively disclosed. Inspected desktop at 1280 × 800 and narrow layouts at 390 and 320 pixels. A playback-row overflow found at 320 pixels was fixed and rechecked.
-- **Colours and typography:** white background, locally hosted sans-serif type, dark text, cobalt controls and coral/brass circuit distinctions. Labels supplement circuit colour. No green/lime palette. Visual inspection is not a full contrast or screen-reader audit.
-- **UI behaviour:** completed all five guided startup steps and observed electrical production. Verified pause, speed selection, language persistence, pump-loss trip and rearm messaging. Verified cutaway, exploded views, rotation and zoom controls. Detail framing adapts to component size.
-- **Progressive detail:** manually navigated reactor → core → assembly → rod → pellet → ceramic → grain, primary pump → hydraulic stage → impeller, and generator → stator. Inspected representative rendered views. The automated geometry test covers every node; every node has not received a separate visual inspection.
-- **Writing:** short functional labels; component roles distinguish illustrations from computed quantities. Model assumptions and recovery instructions are available inside the app and in `MODEL.md`.
-
-## Release checks and remaining limits
-
-Production is an assets-only Cloudflare Worker at <https://rep.keff.uk>. Public HTML, scripts and response headers are checked after publishing. GitHub Actions repeats tests, build, packaging and the production dependency audit on pushes and pull requests.
-
-The browser checks used the Codex in-app Chromium browser on Linux. Safari, Firefox, dedicated screen readers, touch hardware and low-end physical devices have not been tested. No frame-rate guarantee is made.
-
-The physics is an energy-conserving teaching model with reduced thermal inertia and imposed pressures. Geometry and quantities are schematic. It is not a plant operating procedure, accident simulator, engineering design or calibrated fuel-performance model. See `MODEL.md` for equations and omissions.
-
-## Spatial navigation revision
-
-Reviewed the plant-to-fuel-grain flow, its reverse path, the optional details panel and the narrow layout. The six better-interface domain skills informed the review. No additional repository design instructions were present.
-
-| Severity | Location | Before | Implemented change | Reason |
+| Severity | Location | Finding | Change | Reason |
 | --- | --- | --- | --- | --- |
-| Medium | `src/scene.ts`, `setDetail` | Each selection disposed the previous scene and reset the camera. | Components occupy nested world coordinates. Camera movement and scale interpolate over 850 ms; the immediate parent remains as faint outlines. Returning restores the parent viewpoint. | The selected part remains spatially related to its assembly. |
-| Medium | `src/main.ts`, workspace | Explanations, four large measurements and a permanent inspector surrounded the drawing. | Exploration opens first. Details and measurements are disclosures; the drawing uses the full width when details are closed. | Prioritizes manipulation of the machine. |
-| Medium | `src/style.css`, mobile playback | French playback labels overlapped in the first revision. | Restart lives in Details; playback retains Run, speed and Measurements. | All controls fit at 320 px. |
-| Medium | `src/main.ts`, key handling | Escape was ignored when a button had focus. | Escape closes details or measurements, then ascends one level. Native selects and dialogs keep their own Escape handling. | Predictable keyboard recovery. |
+| High | Main workspace | Text and detached panels competed with the machine. | Full-viewport 3D, pictograms, numbered actuators and one electrical-output reading. Explanations and fine controls live in an optional drawer. | Make each action visible in the machine. |
+| High | Plant-to-equipment navigation | Entering equipment substituted another model. | Reuse the actual equipment group, open its casing and move the camera into it. | Preserve spatial continuity. |
+| Medium | Deep navigation | Parent faces obscured the selected part; open lids could crowd the header. | Retain only faint parent outlines and frame the opened geometry. Preserve horizontal shaft orientation in generator details. | Keep the destination readable during a dive. |
+| Medium | Native equipment | Transport disappeared when entering a physical component. | Attach model-driven internal routes to the equipment itself. | Preserve flow through transitions. |
+| Medium | Mobile controls | Small camera targets and a tight chassis frame. | Use 44 px bottom controls, retain rotation through dragging/keyboard, and widen portrait framing. | Keep controls usable and the whole machine visible at 320 px. |
+| Medium | Recovery | A domain stop could disable the pump needed to recover. | Allow circulation commands at the model boundary. | Let the model cool and rearm. |
 
-Browser checks used 1280 × 800 and 320 × 740. Verified seven nested levels, rapid successive navigation, reverse navigation, language switching, details opening/closing and the guided heating flow. Sequential screenshots captured distinct intermediate and final camera positions. The 320 px page had equal document/client width and no controls outside the horizontal viewport.
+Native buttons, labelled ranges, a native dialog, visible focus and an accessible canvas name provide keyboard alternatives. Icon controls retain bilingual names and prerequisite descriptions. The white/navy/orange palette contains no green or lime. Copy review was manual; no AI-writing detector was used.
 
-Measured rendered text on white: primary text 14.37:1, muted text 5.43:1, accent text 7.21:1. These measurements cover the inspected text pairs, not every rendered pixel. Source inspection confirms a 120 ms opacity-only transition under reduced motion; OS-level reduced-motion emulation was unavailable in the test browser. Dedicated screen-reader and hardware touch testing remain unverified.
+Reduced-motion source paths snap camera/section poses and stop particle/shaft travel; unit tests cover phase freezing. OS-level reduced-motion emulation, dedicated screen readers, physical touch devices, Safari, Firefox and low-end hardware performance have not been verified.
 
-Nested placement uses a representative annotated mesh when available and the parent centre otherwise. Detailed models and relative scales remain illustrations, not a dimensionally accurate nested CAD assembly. The physics equations are unchanged.
+## Delivery and limits
 
-Review verdict: no blocking issue remains in the inspected flow. Accessibility, layout, writing, typography, colour and UI behaviour were inspected in the source and browser as described above. Reduced-motion runtime behaviour and dedicated assistive-technology use remain unverified. Copy review was manual; no AI-writing detector or preservation validator was run.
+The public repository is `kennethassogba/rep`; production is an assets-only Cloudflare Worker at <https://rep.keff.uk>. After publishing, compare public HTML and referenced assets with the local build, then check the production page in the browser. GitHub Actions repeats tests, build, packaging and the production dependency audit.
 
-## Open sections and internal transport revision
-
-- `npm test`: 23 tests pass. Seven new tests cover the integrated operating example, zero-source transport, pause and reduced-motion phases, fuel/fluid boundaries, finite routes, reversible casing poses, picked instance transforms and reversed exchanger heat transfer (the first transport test includes both pause and reduced motion).
-- Production build and Worker packaging pass. `npm audit` reports zero vulnerabilities. The existing Three.js size advisory remains (approximately 135 kB gzip); no hardware frame-rate guarantee is inferred from the build.
-- Split casings and covers now open during a 1.5 s spatial transition. Reduced motion snaps geometry/camera to the destination and retains a short opacity transition. Camera anchors use the actual picked instance. Context renders as outlines, without shading nearly transparent parent faces.
-- Inspected the reactor, core lattice, fuel assembly, opened rod, U-tube steam generator, turbine and condenser in Chromium. Clicked a specific assembly and then a rod directly on the canvas; both descended to the expected detail. Browser console contained no warnings or errors during the inspected session.
-- Completed the five-step French cold-start lesson through electrical production, then paused. Verified English exploration starts in the integrated operating example. Switching to the first cold-start lesson resets to 20 °C and pauses.
-- At 320 × 740, inspected the condenser and French controls: document width matched client width (305 px after the vertical scrollbar), without horizontal overflow. In-scene notes remained within the drawing. Also inspected 1280 × 800 desktop views.
-- Local pressurizer flow and microscopic fuel physics remain uncomputed. There is no invented pressurizer particle stream. Tube routes distinguish inside cooling/primary water from outside steam. Cutaway transport is drawn through occluding surfaces for legibility; it is not CFD. Equipment mean values and these limits are labelled in the interface and `MODEL.md`.
-
-| Severity | Location | Finding | Implemented change | Reason |
-| --- | --- | --- | --- | --- |
-| Medium | Detail geometry | Casings stayed static during navigation. | Reversible split shells, lifted heads and open section edges. | Shows how interior parts sit inside a boundary. |
-| Medium | Picking | Repeated pieces used the first matching mesh as the destination. | Picked mesh/group and instance transforms determine the world anchor. | The selected copy remains the entry point. |
-| Medium | Steam-generator geometry | The generic vessel view reused fuel-like internals. | Separate U-tube, tube-plate and separator geometry. | Keeps primary and secondary spaces intelligible. |
-| Medium | Internal routes | Only external piping showed transport. | Internal streams and signed heat arrows follow model rates; pressure-only components remain static. | Explains the process at the inspected level without fabricating local physics. |
-
-Review verdict: no blocking issue in the inspected flows. Dedicated assistive-technology, Safari/Firefox, touch hardware, low-end GPU performance and OS-level reduced-motion emulation remain unverified. Reduced-motion phase freezing is covered by unit tests; source inspection covers the camera fallback. These are software and interface checks, not plant validation.
+The current collection contains one machine. The nine equipment trees are schematic, and fine geometry does not imply locally solved physics. Primary/secondary pressures, reduced thermal inertia, an ideal heat sink and omitted neutronics, pressure dynamics, fluid mechanics and grid synchronization are documented in `MODEL.md` and the app's information drawer. The visual reference informs colour and industrial form; no footage or third-party 3D assets were copied.
