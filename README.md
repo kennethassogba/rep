@@ -1,23 +1,21 @@
 # REP
 
-A mobile browser game. Turn the water wheel, pull the heat lever, open the steam valve and light up the Élysée. Giscard and de Gaulle live in the machine and react when you mess with it.
+Five short presidential missions around one Three.js machine: water pipes, reactor startup, Concorde takeoff, sniffer aircraft and the Élysée lights.
 
 [Play](https://rep.keff.uk/)
 
 ## Play
 
-The whole game fits one screen. Tap a physical control to switch it, or drag to adjust it. The camera moves into that part of the machine. The home button returns to the whole tower. Keyboard controls use Tab, Enter, arrow keys, Home, End and Escape.
+Start the current mission. Giscard or de Gaulle gives the instruction and stays visible while you play. Finish the task to animate another part of the machine and unlock the next mission. Mistakes can be corrected immediately. Completed missions are saved locally.
 
-English is the default. French, pause, slow motion, sound and restart remain available. Motion follows the system's reduced-motion preference. The web manifest opens the game in standalone mode on supporting browsers.
+The game fits one screen. English is the default; French, pause, quarter speed and restart are available. Every task uses native buttons or range inputs with keyboard support. Escape returns to the machine. The web manifest supports standalone portrait mode where available.
 
 ## Code
 
-- `src/arcade.ts`: deterministic game state, consequences and dialogue.
-- `src/mobile-scene.ts`: vertical Three.js machine, handles, camera and visual reactions.
-- `src/main.ts`: pointer and keyboard input, localization and accessible controls.
-- `src/style.css`: full-viewport layout and safe-area spacing.
-
-The former deep equipment explorer has been removed. Its source remains in Git history.
+- `src/missions.ts`: mission order, bilingual dialogue and task success rules.
+- `src/mobile-scene.ts`: the continuous appliance, flowing water, turbine, aircraft and palace.
+- `src/main.ts`: tasks, input, progression, localization and storage.
+- `src/style.css`: single-screen responsive game layout.
 
 ## Develop
 
@@ -38,4 +36,4 @@ npm run package:worker
 npx cf deploy --prebuilt
 ```
 
-GitHub Actions checks tests, TypeScript, the build and the production dependency audit. Deployment targets the existing `rep.keff.uk` Worker.
+GitHub Actions checks tests, TypeScript, the build and production dependencies. The existing Worker serves `rep.keff.uk`.

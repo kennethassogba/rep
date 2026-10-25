@@ -8,16 +8,16 @@ web
 
 ## Product Purpose
 
-A phone-first game: operate a pocket power station, reach 100 MW and light up the Élysée. Experimenting with the controls produces visual jokes involving Giscard and de Gaulle.
+Complete five tactile tasks with Giscard and de Gaulle to bring a single power machine to life and light the Élysée.
 
 ## Capabilities and Constraints
 
-One viewport, no scrolling. Direct manipulation in Three.js, with tap and keyboard alternatives. The camera follows the selected organ. Four controls, a compact game model and no equipment encyclopedia. English by default, French available. Pause, slow motion, restart and optional sound.
+One mobile viewport, no scrolling. The selected blue-and-yellow cabinet is the main scene. Mini-games open as separate workspaces, following the short-task structure of Among Us. Water, nuclear startup, Concorde, sniffer aircraft and grid connection use different interactions. Presidents stay at the sides with persistent spoken instructions. English default, French available. Pause, quarter speed, restart and local progress persistence.
 
 ## Brand Commitments
 
-User-specified Giscard punk, Fifth Republic history, visual memes and pop colors. Existing transparent caricatures remain part of the machine. No green or lime, no explanatory disclaimers, reference panel, taglines or repeated helper labels. Controls must have distinct physical forms.
+Colorfigures-inspired ink outlines and isometric mechanical volume. One coherent casing, pop colors, white ground, no green or lime. Fifth Republic references live in missions and dialogue. No scientific encyclopedia, disclaimers or dialogue buttons.
 
 ## Accessibility
 
-Named native controls, visible keyboard focus, reduced-motion support, safe-area spacing and touch targets. The game remains browser-native; installability depends on the browser.
+Named native controls, pipe orientation descriptions, rod target descriptions, visible keyboard focus, reduced decorative motion, safe-area spacing. No keyboard shortcut is required to complete a task. Physical touch devices remain a separate validation target.

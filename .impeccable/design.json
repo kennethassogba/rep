@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-24T23:54:16.538079+00:00",
+  "generatedAt": "2026-10-25T00:39:28.938165+00:00",
   "title": "Design System: REP",
   "extensions": {
     "colorMeta": {
@@ -191,89 +191,9 @@
       }
     ]
   },
-  "components": [
-    {
-      "name": "Utility button",
-      "kind": "button",
-      "refersTo": "utility-button",
-      "description": "Compact playback and sound control.",
-      "html": "<button class=\"ds-utility\" aria-label=\"Pause\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8 5v14M16 5v14\"/></svg></button>",
-      "css": ".ds-utility { font-family:\"DM Sans Variable\", sans-serif; font-weight:750; color:var(--ink, #211c32); background:#fff; border:0; border-radius:50%; width:44px; height:44px; display:grid; place-items:center; cursor:pointer; } .ds-utility svg { width:21px; height:21px; } .ds-utility:focus-visible { outline:3px solid var(--blue, #294cff); outline-offset:4px; } @media (hover:hover) { .ds-utility:hover { background:#edf0ff; } } @media (prefers-reduced-motion:no-preference) { .ds-utility:not(.ds-overview):active { transform:scale(.96); transition:transform .15s ease-out; } }"
-    },
-    {
-      "name": "Pressed utility",
-      "kind": "button",
-      "refersTo": "utility-button-pressed",
-      "description": "Enabled quarter-speed state.",
-      "html": "<button class=\"ds-utility\" aria-label=\"Quarter speed\" aria-pressed=\"true\">¼×</button>",
-      "css": ".ds-utility { font-family:\"DM Sans Variable\", sans-serif; font-weight:750; color:var(--ink, #211c32); background:#fff; border:0; border-radius:50%; width:44px; height:44px; display:grid; place-items:center; cursor:pointer; } .ds-utility svg { width:21px; height:21px; } .ds-utility:focus-visible { outline:3px solid var(--blue, #294cff); outline-offset:4px; } @media (hover:hover) { .ds-utility:hover { background:#edf0ff; } } @media (prefers-reduced-motion:no-preference) { .ds-utility:not(.ds-overview):active { transform:scale(.96); transition:transform .15s ease-out; } } .ds-utility[aria-pressed=\"true\"] { background:#dce4ff; } @media (hover:hover) { .ds-utility[aria-pressed=\"true\"]:hover { background:#edf0ff; } }"
-    },
-    {
-      "name": "Overview button",
-      "kind": "button",
-      "refersTo": "overview-button",
-      "description": "Returns from equipment focus to the whole machine.",
-      "html": "<button class=\"ds-utility ds-overview\" aria-label=\"Whole machine\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m3 11 9-8 9 8M6 9v12h12V9M10 21v-7h4v7\"/></svg></button>",
-      "css": ".ds-utility { font-family:\"DM Sans Variable\", sans-serif; font-weight:750; color:var(--ink, #211c32); background:#fff; border:0; border-radius:50%; width:44px; height:44px; display:grid; place-items:center; cursor:pointer; } .ds-utility svg { width:21px; height:21px; } .ds-utility:focus-visible { outline:3px solid var(--blue, #294cff); outline-offset:4px; } @media (hover:hover) { .ds-utility:hover { background:#edf0ff; } } @media (prefers-reduced-motion:no-preference) { .ds-utility:not(.ds-overview):active { transform:scale(.96); transition:transform .15s ease-out; } } .ds-overview { background:#ffd52f; border:2px solid var(--ink, #211c32); border-radius:12px; box-shadow:0 3px 0 var(--ink, #211c32); } @media (hover:hover) { .ds-overview:hover { background:#edf0ff; } }"
-    },
-    {
-      "name": "Dialogue",
-      "kind": "custom",
-      "refersTo": "dialogue",
-      "description": "Temporary speech positioned near the character.",
-      "html": "<p class=\"ds-speech\">100 MW. I have guests.</p>",
-      "css": ".ds-speech { margin:0; max-width:212px; padding:9px 12px; background:#fff; color:var(--ink, #211c32); border:2px solid var(--ink, #211c32); border-radius:15px 15px 15px 2px; box-shadow:3px 3px 0 var(--ink, #211c32); font-family:\"DM Sans Variable\", sans-serif; font-size:.875rem; line-height:1.4; font-weight:700; text-wrap:pretty; } @media (max-height:500px) { .ds-speech { font-size:.75rem; max-width:190px; padding:6px 9px; } } @media (forced-colors:active) { .ds-speech { box-shadow:none; } }"
-    },
-    {
-      "name": "Control value",
-      "kind": "custom",
-      "refersTo": "control-value",
-      "description": "Percentage revealed by dragging or keyboard focus.",
-      "html": "<output class=\"ds-value\">50%</output>",
-      "css": ".ds-value { display:inline-block; background:var(--ink, #211c32); color:#fff; padding:4px 8px; border-radius:5px; font-family:\"DM Sans Variable\", sans-serif; font-size:.8rem; font-weight:750; font-variant-numeric:tabular-nums; }"
-    },
-    {
-      "name": "Power meter",
-      "kind": "custom",
-      "refersTo": "power-meter",
-      "description": "Current output beside the 100 MW target.",
-      "html": "<output class=\"ds-power\" aria-label=\"Electrical output in megawatts\"><strong>0</strong><span>/100 MW</span></output>",
-      "css": ".ds-power { display:flex; align-items:baseline; gap:5px; font-family:\"DM Sans Variable\", sans-serif; color:var(--ink, #211c32); font-variant-numeric:tabular-nums; background:#fff; padding:3px 9px; border-radius:6px; } .ds-power strong { font-size:2rem; line-height:1; font-weight:900; letter-spacing:-.03em; } .ds-power span { font-size:.75rem; font-weight:700; } .ds-power[data-lit=\"true\"] { color:#294cff; } @media (max-height:500px) { .ds-power strong { font-size:1.5rem; } }"
-    }
-  ],
+  "components": [],
   "narrative": {
-    "northStar": "The comic power machine",
-    "overview": "REP places an outlined, brightly colored machine on uninterrupted white. Giscard and de Gaulle appear as transparent cutouts inside the structure. Their reactions, equipment movement and short dialogue bubbles belong to the same scene.\n\nThe controls have physical forms that identify what can be manipulated. Interface text stays compact, with changing values beside the action and small utilities at the viewport edges.",
-    "keyCharacteristics": [
-      "Outlined machinery with matte pop colors.",
-      "Physical handles aligned with native interaction targets.",
-      "Character cutouts and temporary comic reactions.",
-      "Continuous white behind the scene and interface."
-    ],
-    "rules": [
-      {
-        "name": "The Continuous White Rule",
-        "body": "Keep the scene and HTML on the same white background without a canvas frame.",
-        "section": "colors"
-      },
-      {
-        "name": "The Temporary Value Rule",
-        "body": "Show a handle's percentage during direct manipulation or keyboard focus; keep its physical form visible at rest.",
-        "section": "typography"
-      }
-    ],
-    "dos": [
-      "Do preserve the continuous white background and outlined machine materials.",
-      "Do keep each control's physical shape and color association.",
-      "Do retain visible keyboard focus, named native controls and safe-area spacing.",
-      "Do use the existing character cutouts inside the machine.",
-      "Do keep numeric output and visible machine reactions tied to the same state."
-    ],
-    "donts": [
-      "Don't introduce green or lime.",
-      "Don't add taglines, permanent helper labels or an equipment encyclopedia.",
-      "Don't replace direct manipulation with a separate dashboard.",
-      "Don't obscure controls with dialogue or decorative overlays."
-    ]
+    "northStar": "One machine, five presidential missions",
+    "overview": "# REP design\n\nThe selected visual target is the first concept board: one blue cabinet with a yellow top and side, a red core porthole, a transverse turbine window, external clear water pipes and a lower yellow service hatch. A small wired \u00c9lys\u00e9e sits on top. The machine is continuous, not a stack of equipment models.\n\nWhite is shared by the page and Three.js canvas. Palette: ink #211c32, cobalt #294cff, red #ff543c, yellow #ffd52f and cyan #19c3ef. DM Sans is bundled locally. Toon-shaded procedural geometry and explicit dark edges carry the machine.\n\nThe header shows REP, five mission positions and language. The current objective is above the machine. One yellow action opens the task. Presidents occupy opposite lower margins; one persistent dialogue bubble identifies the active speaker. Task actions stay inside the task, never in dialogue. Completed tasks return to the machine with the president's response and the next mission action.\n\nTask surfaces use the same ink borders and physical colors. The water puzzle rotates four pipe bends. Reactor rods use three sliders with visible target lines. Concorde uses moving thrust alignment. Sniffer aircraft scan three sites. Grid connection uses a timed switch. Native controls provide keyboard and touch operation. No external runtime dependencies were added.\n\nAll views fit 320 x 568 and larger portrait viewports. Short landscape uses the left side for the task and the right side for dialogue. Safe-area insets protect top and bottom utilities. Pause disables task inputs and freezes task time. Reduced motion stops decorative aircraft, turbine and fluid motion; timing required by the actual games remains visible.\n"
   }
 }
