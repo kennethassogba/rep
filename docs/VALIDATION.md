@@ -1,21 +1,25 @@
 # Validation
 
-Checked on 25 October 2026 for the five-mission game.
+Checked on 25 October 2026 for the dark illustrated rebuild.
 
 ## Automated
 
-Six tests pass: ordered progression and duplicate completion, blocked mission skipping, all single-pipe mistakes, rod alignment tolerance and invalid values, reachable flight/grid success windows, and interface copy normalization. TypeScript and the Vite production build pass. No runtime dependency was added.
+Eleven tests pass. They cover ordered mission completion, invalid skips, 300 solvable water-board scrambles and every single-piece wrong rotation, three-board completion, seed variation, all three reactor levels, dual-control Concorde flight, stability loss, three tuned surveys, grid cooldown and tripped feeders, paused state, frame bounds, and authored text normalization.
 
-The app bundle is about 20 kB before compression. Three.js is 510 kB (130 kB gzip); Vite reports a nonblocking 500 kB chunk-size advisory.
+The core needs at least 15 stable seconds, Concorde 24 and the receiver 12 across their three phases. Moving controls, puzzle solving and retries add play time. These are game rules, not measured human completion times.
+
+TypeScript and Vite pass. Three.js and its type dependency were removed. Runtime JavaScript is approximately 21 kB before compression; optimized illustration assets total about 600 kB. The production dependency audit reports no vulnerabilities.
 
 ## Browser
 
-The five tasks were completed in Chromium through their actual UI: water routing, reactor rods, Concorde thrust tracking, three sniffer scans and timed grid connection. The final state lights the palace and marks all five missions complete. Wrong water and rod submissions produce recoverable feedback. Pipe rotation also works with Enter. Rods and throttle use native range inputs. French switching, pause, native disabled task inputs, quarter speed and persisted completed missions were checked.
+All five missions were completed through their actual browser controls: three nine-piece water boards, three core levels, takeoff/cruise/landing using two sliders, three receiver locks in the order 3-1-2, and three timed grid feeders. Water and grid failures show recoverable feedback. The grid cadence was reduced after testing revealed a harsh timing window; the corrected sequence completed in the browser.
 
-Portrait 320 x 568 and 390 x 844 fit one viewport without page scrolling. Landscape 844 x 390 puts the task beside dialogue. Desktop 1280 x 800 was checked. The presidents stay outside the machine and their instructions remain visible during tasks.
+Verified native disabled task inputs during pause, resumed play, French and English, Enter to rotate a pipe, retained task state after closing, and completed-mission persistence. The famous heart phrase appears at core startup; the final state says Au revoir.
 
-Browser console reported no JavaScript errors. Physical iOS/Android touch, installation and low-end GPU performance were not tested.
+Portrait 320 x 568 and 390 x 844 fit one viewport. The water task and dialogue fit side by side at 844 x 390. Desktop 1280 x 800 was checked. Task and dialogue bounds do not overlap in the inspected compact portrait states. Measured text contrast exceeds AA; task boundaries exceed 3:1.
+
+No JavaScript errors were reported in the local browser console. Physical iOS/Android touch, screen-reader operation, installation and low-end device performance were not tested. Reduced decorative motion is implemented; a physical reduced-motion device session was not run.
 
 ## Publication
 
-Cloudflare version `e6e08524-8e1d-4ddc-9e69-2e655a0b7aa8` is deployed to rep.keff.uk. Public HTML, entry script, Three.js, CSS and manifest match the local build byte for byte. The first task was completed on the public site and unlocked reactor startup. Production console reported no errors.
+Cloudflare version `c4af6abc-f242-4bc9-9219-4afe3923cdf5` is live at rep.keff.uk. HTML, entry JavaScript, CSS, manifest and both illustration files match the local build byte for byte. The three public water boards were completed and reactor startup persisted after reload. The production browser reports no JavaScript errors.

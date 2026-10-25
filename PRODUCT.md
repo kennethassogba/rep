@@ -8,16 +8,16 @@ web
 
 ## Product Purpose
 
-Complete five tactile tasks with Giscard and de Gaulle to bring a single power machine to life and light the Élysée.
+Complete five presidential missions to start a power machine and light the Élysée. Giscard and de Gaulle guide the tasks and respond with familiar phrases and Fifth Republic references.
 
 ## Capabilities and Constraints
 
-One mobile viewport, no scrolling. The selected blue-and-yellow cabinet is the main scene. Mini-games open as separate workspaces, following the short-task structure of Among Us. Water, nuclear startup, Concorde, sniffer aircraft and grid connection use different interactions. Presidents stay at the sides with persistent spoken instructions. English default, French available. Pause, quarter speed, restart and local progress persistence.
+One viewport, no scrolling. Dark appearance. A detailed illustrated appliance replaces Three.js. Missions have three phases: randomized nine-tile water circuits, moving reactor-rod targets, Concorde throttle and pitch, tuned sniffer-aircraft surveys, and three timed grid feeders. Completed missions persist locally. Closing a task preserves its current phase during the session. English default, French available. Pause, quarter speed and restart.
 
 ## Brand Commitments
 
-Colorfigures-inspired ink outlines and isometric mechanical volume. One coherent casing, pop colors, white ground, no green or lime. Fifth Republic references live in missions and dialogue. No scientific encyclopedia, disclaimers or dialogue buttons.
+The supplied concept image determines the machine and president portraits. Inked dimensional machinery, pop colors, midnight ground, a detailed Élysée. Famous phrases remain in French even in English dialogue. No scientific encyclopedia, reference panel, caricature disclaimer or dialogue buttons.
 
 ## Accessibility
 
-Named native controls, pipe orientation descriptions, rod target descriptions, visible keyboard focus, reduced decorative motion, safe-area spacing. No keyboard shortcut is required to complete a task. Physical touch devices remain a separate validation target.
+Named native controls, visible keyboard focus, pipe orientation descriptions, changing rod target descriptions, spoken instructions in a persistent live region and recoverable errors. Reduced decorative motion and safe-area spacing. Physical touch devices remain a separate validation target.

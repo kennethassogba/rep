@@ -1,13 +1,19 @@
 :root {
   font-family: "DM Sans Variable", sans-serif;
-  color: #211c32;
-  background: #fff;
+  color: #f3f1e9;
+  background: #0b1020;
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
-  --ink: #211c32;
-  --blue: #294cff;
+  --ink: #090d18;
+  --page: #0b1020;
+  --surface: #151d30;
+  --text: #f3f1e9;
+  --muted: #b6bfd3;
+  --line: #6f7e9c;
+  --blue: #86a4ff;
   --yellow: #ffd52f;
-  --cyan: #19c3ef;
+  --cyan: #42d5ff;
+  color-scheme: dark;
 }
 * {
   box-sizing: border-box;
@@ -32,7 +38,7 @@ button {
 }
 button:focus-visible,
 input:focus-visible {
-  outline: 3px solid var(--blue);
+  outline: 3px solid var(--cyan);
   outline-offset: 4px;
 }
 button:disabled {
@@ -46,7 +52,7 @@ button:disabled {
   height: 100dvh;
   overflow: hidden;
   isolation: isolate;
-  background: #fff;
+  background: var(--page);
 }
 header {
   position: absolute;
@@ -64,11 +70,10 @@ h1 {
   font-size: 25px;
   letter-spacing: -1px;
   font-weight: 950;
-  color: var(--blue);
 }
 header button {
   border: 0;
-  background: white;
+  background: transparent;
   min-width: 44px;
   min-height: 44px;
   font-weight: 800;
@@ -81,36 +86,103 @@ header button {
 #progress span {
   width: 23px;
   height: 23px;
-  border: 1px solid #c5c5d0;
+  border: 1px solid var(--line);
   border-radius: 50%;
   display: grid;
   place-items: center;
   font-size: 11px;
   font-weight: 800;
-  color: #656170;
+  color: var(--muted);
 }
 #progress .current {
-  border: 2px solid var(--ink);
+  border: 2px solid var(--yellow);
   background: var(--yellow);
   color: var(--ink);
 }
 #progress .done {
-  background: var(--blue);
+  background: #294cff;
   border-color: var(--blue);
   color: white;
 }
 #world {
   position: absolute;
-  inset: 90px 0 195px;
+  inset: 107px 10px 227px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
 }
-canvas {
-  display: block;
+.machine-art {
+  position: relative;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 2/3;
+  max-width: 100%;
+  max-height: 100%;
+}
+.machine-base,
+.machine-layers {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: contain;
+}
+.machine-base {
+  filter: brightness(0.93);
+}
+#palace-art {
+  filter: brightness(0.58);
+}
+#core-art {
+  filter: brightness(0.35);
+}
+#world[data-stage="2"] #core-art,
+#world[data-stage="3"] #core-art,
+#world[data-stage="4"] #core-art,
+#world[data-stage="5"] #core-art {
+  filter: brightness(1.05);
+}
+#world[data-stage="5"] #palace-art {
+  filter: brightness(1.2);
+}
+.water-flow,
+.current-flow {
+  fill: none;
+  stroke: #c7f4ff;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 3 42;
+  opacity: 0;
+}
+.current-flow {
+  stroke: var(--yellow);
+  stroke-width: 6;
+  stroke-dasharray: 10 15;
+}
+#world:not([data-stage="0"]) .water-flow {
+  opacity: 0.85;
+}
+#world[data-stage="5"] .current-flow {
+  opacity: 1;
+}
+.steam-cloud {
+  position: absolute;
+  width: 8%;
+  height: 6%;
+  top: 18%;
+  left: 78%;
+  border-radius: 50%;
+  background: #d5e9ff;
+  opacity: 0;
+  filter: blur(3px);
+}
+.steam-two {
+  left: 85%;
+  top: 20%;
 }
 #objective {
   position: absolute;
-  top: 62px;
+  top: 61px;
   left: 14px;
   right: 14px;
   text-align: center;
@@ -120,7 +192,7 @@ canvas {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #666173;
+  color: var(--muted);
 }
 h2 {
   font-size: 19px;
@@ -131,39 +203,29 @@ h2 {
 }
 #launch {
   position: absolute;
-  bottom: 182px;
+  bottom: 201px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  min-height: 52px;
+  min-height: 50px;
   min-width: 190px;
   max-width: 90%;
-  padding: 10px 16px;
+  padding: 10px 24px;
   background: var(--yellow);
+  color: var(--ink);
   border: 2px solid var(--ink);
   border-radius: 12px;
-  box-shadow: 0 4px 0 var(--ink);
+  box-shadow: 0 4px 0 #000;
   font-weight: 850;
   z-index: 2;
 }
-#launch svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-}
 #launch:active {
   transform: translate(-50%, 3px);
-  box-shadow: 0 1px 0 var(--ink);
+  box-shadow: 0 1px 0 #000;
 }
 #presidents {
   position: absolute;
   bottom: 38px;
-  height: 134px;
+  height: 153px;
   left: 0;
   right: 0;
   display: flex;
@@ -172,43 +234,47 @@ h2 {
   pointer-events: none;
   z-index: 4;
 }
-#presidents img {
-  height: 125px;
-  width: 86px;
-  object-fit: contain;
-  object-position: bottom;
-  filter: saturate(0.8);
-  opacity: 0.42;
+.portrait {
+  height: 120px;
+  width: 90px;
+  flex-shrink: 0;
+  background-image: url("/art/presidents.webp");
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  opacity: 0.65;
+}
+#degaulle {
+  background-position: left bottom;
+}
+#giscard {
+  background-position: right bottom;
 }
 #presidents[data-speaker="degaulle"] #degaulle,
 #presidents[data-speaker="giscard"] #giscard {
   opacity: 1;
-  filter: none;
 }
 #dialogue {
   position: absolute;
-  bottom: 12px;
-  left: 84px;
-  right: 84px;
-  min-height: 84px;
-  background: white;
-  border: 2px solid var(--ink);
+  bottom: 10px;
+  left: 85px;
+  right: 85px;
+  background: #192238;
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px 12px;
-  box-shadow: 2px 3px 0 var(--ink);
 }
 #speaker {
   display: block;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.7px;
-  color: var(--blue);
+  color: var(--yellow);
 }
 #speech {
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.4;
   margin: 4px 0 0;
-  font-weight: 650;
+  font-weight: 600;
 }
 footer {
   position: absolute;
@@ -224,36 +290,37 @@ footer {
 footer button {
   min-height: 32px;
   border: 0;
-  background: white;
+  background: transparent;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
   padding: 5px 9px;
+  color: var(--muted);
 }
 footer button[aria-pressed="true"] {
-  background: #e0e6ff;
+  background: #2b3d62;
+  color: var(--text);
 }
 #restart {
   margin-left: auto;
 }
 #task {
   position: absolute;
-  inset: 62px 12px 184px;
+  inset: 61px 12px 207px;
   z-index: 3;
-  background: #fff;
-  border: 2px solid var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 18px;
-  box-shadow: 0 5px 0 var(--ink);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 10px 35px #0007;
 }
 .task-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
-  border-bottom: 1px solid #dedce4;
+  padding: 7px 12px;
   flex-shrink: 0;
 }
 .task-heading h2 {
@@ -264,8 +331,16 @@ footer button[aria-pressed="true"] {
   width: 40px;
   height: 40px;
   border: 0;
-  background: white;
+  background: transparent;
   font-size: 28px;
+  flex-shrink: 0;
+}
+#task-phase {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15px;
+  color: var(--muted);
+  padding: 0 14px 10px;
   flex-shrink: 0;
 }
 #task-body {
@@ -275,109 +350,115 @@ footer button[aria-pressed="true"] {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 14px 20px;
-  gap: 14px;
-}
-#task-status {
-  font-size: 12px;
-  line-height: 1.3;
-  text-align: center;
-  min-height: 32px;
-  padding: 0 12px 8px;
-  font-weight: 700;
+  padding: 10px 20px 18px;
+  gap: 12px;
 }
 .primary {
   background: var(--yellow);
+  color: var(--ink);
   border: 2px solid var(--ink);
   border-radius: 10px;
   padding: 10px 18px;
-  min-height: 48px;
+  min-height: 46px;
   font-weight: 800;
   flex-shrink: 0;
-  box-shadow: 0 3px 0 var(--ink);
+  box-shadow: 0 3px 0 #000;
 }
 .primary:active {
   transform: translateY(2px);
   box-shadow: none;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 input[type="range"] {
   width: 100%;
   height: 38px;
-  accent-color: var(--blue);
+  accent-color: var(--cyan);
   touch-action: pan-x;
   flex-shrink: 0;
 }
 progress {
   appearance: none;
   width: 100%;
-  height: 9px;
+  height: 8px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #e9e8ee;
+  background: #37425a;
   flex-shrink: 0;
 }
 progress::-webkit-progress-bar {
-  background: #e9e8ee;
+  background: #37425a;
 }
 progress::-webkit-progress-value {
-  background: var(--blue);
+  background: var(--cyan);
 }
 progress::-moz-progress-bar {
-  background: var(--blue);
+  background: var(--cyan);
 }
 .pipe-puzzle {
   position: relative;
-  width: min(100%, 260px);
-  padding: 22px 0;
+  width: min(100%, 270px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
 }
 .pipe-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
 }
 .pipe-tile {
   padding: 0;
-  border: 1px solid #a8a5b1;
-  background: #eef9ff;
+  border: 1px solid var(--line);
+  background: #1c2942;
   touch-action: manipulation;
-  min-width: 60px;
-  min-height: 60px;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
 }
 .pipe-tile svg {
   display: block;
   width: 100%;
   height: 100%;
-  fill: var(--ink);
 }
 .pipe-border {
   fill: none;
-  stroke: var(--ink);
-  stroke-width: 27;
+  stroke: #050915;
+  stroke-width: 29;
 }
 .pipe-inner {
   fill: none;
-  stroke: var(--cyan);
+  stroke: #a1acc0;
   stroke-width: 20;
+}
+.pipe-tile.flowing .pipe-inner {
+  stroke: var(--cyan);
 }
 .port {
   position: absolute;
-  font-size: 10px;
+  transform: translateY(-50%);
+  font-size: 9px;
   font-weight: 900;
-  background: var(--blue);
-  color: white;
-  padding: 4px 7px;
+  background: var(--cyan);
+  color: var(--ink);
+  padding: 4px 6px;
   border-radius: 4px;
+  z-index: 1;
 }
 .inlet {
   left: -15px;
-  top: 26%;
+  top: 16.7%;
 }
 .outlet {
   right: -15px;
-  top: 26%;
 }
 .rod-bank {
   display: flex;
@@ -386,7 +467,7 @@ progress::-moz-progress-bar {
   justify-content: center;
   flex: 1;
   min-height: 100px;
-  max-height: 260px;
+  max-height: 280px;
 }
 .rod-column {
   display: flex;
@@ -399,11 +480,11 @@ progress::-moz-progress-bar {
 .rod-track {
   height: 100%;
   width: 44px;
-  border: 2px solid var(--ink);
-  background: #eff0f9;
+  border: 2px solid var(--line);
+  background: #232e46;
   border-radius: 10px;
   position: relative;
-  min-height: 65px;
+  min-height: 55px;
   overflow: visible;
 }
 .rod-fill {
@@ -418,7 +499,7 @@ progress::-moz-progress-bar {
   position: absolute;
   left: -8px;
   right: -8px;
-  border-top: 4px solid var(--ink);
+  border-top: 4px solid var(--text);
   z-index: 1;
 }
 .rod-track[data-aligned="true"] .rod-fill {
@@ -432,12 +513,21 @@ progress::-moz-progress-bar {
   width: 100%;
   height: 32px;
 }
+.hold-readout {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 .flight-sky {
   width: 100%;
   max-width: 330px;
-  min-height: 80px;
+  min-height: 35px;
+  max-height: 120px;
   flex: 1;
-  max-height: 190px;
   display: flex;
   align-items: center;
   position: relative;
@@ -445,70 +535,68 @@ progress::-moz-progress-bar {
 }
 .flight-sky svg {
   width: 100%;
-  fill: white;
-  stroke: var(--ink);
+  max-height: 100%;
+  fill: #f3f1e9;
+  stroke: #0b1020;
   stroke-width: 2;
 }
 .contrail {
-  stroke: #19c3ef;
+  stroke: var(--cyan);
   stroke-width: 3;
+  fill: none;
 }
-.runway {
-  position: absolute;
-  bottom: 0;
-  height: 3px;
-  background: var(--ink);
+.flight-control {
   width: 100%;
+  flex-shrink: 0;
+}
+.flight-control label {
+  font-size: 12px;
+  font-weight: 800;
+  display: block;
+  margin-bottom: 5px;
 }
 .throttle-meter {
-  height: 40px;
-  border: 2px solid var(--ink);
+  height: 27px;
+  border: 1px solid var(--line);
   border-radius: 6px;
   width: 100%;
   position: relative;
-  background: #f0eff8;
+  background: #27324a;
   overflow: hidden;
 }
-#flight-zone {
+.throttle-meter span {
   position: absolute;
   width: 20%;
   top: 0;
   bottom: 0;
   background: repeating-linear-gradient(
     135deg,
-    #ffd52f 0px,
-    #ffd52f 6px,
-    #fff 6px,
-    #fff 8px
+    #ffd52f 0,
+    #ffd52f 5px,
+    #54481c 5px,
+    #54481c 7px
   );
   border-inline: 2px solid var(--ink);
 }
-#flight-needle {
+.throttle-meter i {
   position: absolute;
   height: 100%;
   width: 4px;
-  background: var(--ink);
+  background: #fff;
 }
-.throttle-label {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  font-weight: 800;
-  font-size: 13px;
-}
-#hold-time {
-  font-variant-numeric: tabular-nums;
+.flight-control input {
+  height: 28px;
+  margin: 4px 0 0;
 }
 .radar {
-  width: min(100%, 270px);
+  width: min(100%, 240px);
   aspect-ratio: 1;
-  border: 3px solid var(--ink);
-  background: #eff6ff;
+  border: 2px solid var(--line);
+  background: #152743;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
-  flex-shrink: 1;
-  min-height: 100px;
+  flex-shrink: 0;
 }
 .radar-rings {
   position: absolute;
@@ -517,7 +605,7 @@ progress::-moz-progress-bar {
     circle,
     transparent 0%,
     transparent 23%,
-    #afc6eb 24%,
+    #465e83 24%,
     transparent 25%
   );
 }
@@ -527,66 +615,89 @@ progress::-moz-progress-bar {
   height: 2px;
   left: 50%;
   top: 50%;
-  background: var(--blue);
+  background: var(--cyan);
   transform-origin: left center;
 }
 .site {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border: 2px solid var(--ink);
   background: var(--yellow);
+  color: var(--ink);
   border-radius: 50%;
   font-weight: 850;
   font-size: 17px;
 }
 .site.scanning {
-  outline: 4px solid var(--blue);
-  outline-offset: 4px;
+  outline: 3px solid var(--cyan);
+  outline-offset: 3px;
 }
 .site.scanned {
-  background: var(--blue);
+  background: #294cff;
   color: white;
+  border-color: var(--blue);
+}
+.signal-label {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+}
+.signal-meter {
+  height: 7px;
+  width: 100%;
+  background: #37425a;
+  overflow: hidden;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+#signal-fill {
+  display: block;
+  height: 100%;
+  background: var(--yellow);
+  transform: scaleX(0);
+  transform-origin: left center;
 }
 #scan-results {
   display: flex;
-  gap: 8px;
+  gap: 14px;
   justify-content: center;
-  flex-wrap: wrap;
   font-size: 11px;
-  font-weight: 700;
+  color: var(--muted);
   min-height: 16px;
 }
 .sync-dial {
-  width: min(100%, 270px);
+  width: min(100%, 290px);
   aspect-ratio: 1.4;
   position: relative;
   overflow: hidden;
-  border: 3px solid var(--ink);
+  border: 2px solid var(--line);
   border-bottom-width: 10px;
-  border-radius: 140px 140px 15px 15px;
-  background: #eff0fa;
+  border-radius: 160px 160px 15px 15px;
+  background: #232e46;
 }
 .sync-mark {
   position: absolute;
-  left: 41%;
-  right: 41%;
-  top: 0;
-  height: 45%;
+  left: calc(50% - 15px);
+  width: 30px;
+  bottom: 0;
+  height: 100%;
+  transform-origin: bottom center;
   background: repeating-linear-gradient(
     135deg,
     #ffd52f 0,
-    #ffd52f 6px,
-    #fff 6px,
-    #fff 8px
+    #ffd52f 5px,
+    #54481c 5px,
+    #54481c 7px
   );
-  border-inline: 2px solid var(--ink);
 }
 #sync-arm {
   position: absolute;
   width: 4px;
-  background: var(--ink);
+  background: var(--text);
   height: 78%;
   bottom: 0;
   left: calc(50% - 2px);
@@ -597,7 +708,7 @@ progress::-moz-progress-bar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--text);
   bottom: -6px;
   left: calc(50% - 11px);
 }
@@ -614,36 +725,47 @@ progress::-moz-progress-bar {
 .dial-max {
   right: 12px;
 }
-#render-error {
-  position: absolute;
-  top: 45%;
-  inset-inline: 20px;
-  text-align: center;
-  font-size: 13px;
+.feeder-lights {
+  display: flex;
+  gap: 15px;
+}
+.feeder-lights span {
+  border: 1px solid var(--line);
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+.feeder-lights .lit {
+  background: var(--yellow);
+  color: var(--ink);
+  border-color: var(--yellow);
 }
 #game[data-paused="true"] #task-body {
-  opacity: 0.45;
+  opacity: 0.5;
   pointer-events: none;
 }
 @media (min-width: 650px) {
   #world {
-    inset: 80px 0 125px;
+    inset: 100px 0 185px;
   }
   #presidents {
-    max-width: 680px;
+    max-width: 740px;
     left: 50%;
     right: auto;
     width: 100%;
     transform: translateX(-50%);
-    height: 150px;
   }
-  #presidents img {
-    height: 160px;
-    width: 120px;
+  .portrait {
+    height: 145px;
+    width: 109px;
   }
   #dialogue {
-    left: 135px;
-    right: 135px;
+    left: 124px;
+    right: 124px;
     bottom: 10px;
     padding: 13px 16px;
   }
@@ -651,19 +773,16 @@ progress::-moz-progress-bar {
     font-size: 15px;
   }
   #launch {
-    bottom: 170px;
-  }
-  #objective {
-    top: 65px;
+    bottom: 193px;
   }
   #task {
-    max-width: 440px;
+    max-width: 460px;
     width: calc(100% - 24px);
     left: 50%;
     right: auto;
     transform: translateX(-50%);
-    bottom: 190px;
-    top: 65px;
+    bottom: 203px;
+    top: 61px;
   }
   header,
   footer {
@@ -676,77 +795,101 @@ progress::-moz-progress-bar {
 }
 @media (max-height: 690px) {
   #task {
-    bottom: 151px;
-    top: 56px;
+    bottom: 184px;
+    top: 54px;
   }
   #presidents {
-    height: 105px;
+    height: 144px;
     bottom: 34px;
   }
-  #presidents img {
-    height: 100px;
-    width: 65px;
+  .portrait {
+    height: 92px;
+    width: 69px;
   }
   #dialogue {
-    left: 65px;
-    right: 65px;
-    min-height: 72px;
-    padding: 7px 9px;
+    left: 64px;
+    right: 64px;
+    padding: 8px 9px;
     bottom: 5px;
   }
   #speech {
     font-size: 12px;
+    line-height: 1.35;
   }
   #speaker {
     font-size: 9px;
   }
   #launch {
-    bottom: 148px;
+    bottom: 180px;
     min-height: 44px;
   }
   #world {
-    inset: 87px 0 155px;
+    inset: 93px 0 207px;
   }
   #objective {
-    top: 55px;
+    top: 53px;
   }
   h2 {
     font-size: 16px;
   }
   #task-body {
-    padding: 8px 15px;
-    gap: 8px;
+    padding: 5px 18px 12px;
+    gap: 7px;
   }
   .task-heading {
-    padding: 4px 10px;
+    padding: 3px 10px;
   }
   .task-heading h2 {
     font-size: 15px;
   }
-  #task-status {
-    font-size: 11px;
-    min-height: 28px;
+  #task-phase {
+    font-size: 10px;
+    padding-bottom: 4px;
   }
   .pipe-puzzle {
-    max-width: 175px;
-    padding: 12px 0;
+    width: 164px;
   }
   .primary {
-    min-height: 42px;
+    min-height: 40px;
     padding: 8px 12px;
     font-size: 13px;
   }
   .radar {
-    max-width: 175px;
+    width: 128px;
   }
   .sync-dial {
-    max-width: 220px;
+    width: 205px;
   }
   .rod-bank {
-    max-height: 170px;
+    max-height: 150px;
   }
   .flight-sky {
-    max-height: 115px;
+    max-height: 40px;
+    min-height: 25px;
+  }
+  .flight-control label {
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  .throttle-meter {
+    height: 18px;
+  }
+  .flight-control input {
+    height: 23px;
+    margin-top: 1px;
+  }
+  .hold-readout {
+    font-size: 11px;
+  }
+  .signal-label {
+    font-size: 11px;
+  }
+  input[type="range"] {
+    height: 28px;
+  }
+  #scan-results {
+    font-size: 10px;
+    min-height: 12px;
   }
 }
 @media (max-height: 440px) and (orientation: landscape) {
@@ -754,32 +897,32 @@ progress::-moz-progress-bar {
     left: auto;
     right: 12px;
     transform: none;
-    width: 220px;
+    width: 240px;
     bottom: 32px;
   }
   #dialogue {
-    left: 15px;
-    right: 15px;
-    bottom: 90px;
+    left: 5px;
+    right: 5px;
+    bottom: 94px;
   }
-  #presidents img {
-    height: 90px;
+  .portrait {
+    height: 86px;
     width: 65px;
   }
   #world {
-    inset: 55px 230px 40px 0;
+    inset: 55px 255px 40px 0;
   }
   #objective {
-    right: 230px;
+    right: 255px;
     top: 52px;
   }
   #launch {
-    left: calc((100% - 230px) / 2);
+    left: calc((100% - 255px) / 2);
     bottom: 45px;
   }
   #task {
     left: 12px;
-    right: 245px;
+    right: 267px;
     top: 55px;
     bottom: 42px;
     width: auto;
@@ -788,33 +931,58 @@ progress::-moz-progress-bar {
   }
   #task-body {
     flex-direction: row;
-    gap: 20px;
+    gap: 18px;
   }
   .pipe-puzzle {
-    max-width: 160px;
+    width: 160px;
   }
   .rod-bank {
-    max-height: 125px;
-    max-width: 210px;
+    max-height: 145px;
+    max-width: 240px;
   }
   .radar {
-    width: 140px;
-    flex-shrink: 0;
+    width: 135px;
   }
+  #task-body[data-kind="sniffer"] {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    grid-template-rows: repeat(4, 1fr);
+    align-content: center;
+    gap: 5px 12px;
+  }
+  .radar {
+    grid-row: 1/5;
+  }
+  .signal-label {
+    grid-column: 2;
+  }
+  #frequency,
+  .signal-meter,
   #scan-results {
-    max-width: 80px;
-    flex-direction: column;
+    grid-column: 2;
   }
-  .flight-sky {
+  #task-body[data-kind="sniffer"] progress {
     display: none;
   }
   #task-body[data-kind="concorde"] {
     flex-direction: column;
-    padding: 6px 22px;
-    gap: 4px;
+    gap: 3px;
+    padding: 2px 22px 8px;
+  }
+  .flight-sky {
+    display: none;
   }
   .sync-dial {
-    width: 170px;
+    width: 180px;
+  }
+  #task-body[data-kind="nuclear"] {
+    flex-wrap: wrap;
+  }
+  .hold-readout {
+    width: 90px;
+  }
+  #task-body[data-kind="nuclear"] progress {
+    width: 90px;
   }
   header {
     left: 12px;
@@ -823,10 +991,86 @@ progress::-moz-progress-bar {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  #presidents img {
+  .portrait {
     transition: opacity 0.2s;
   }
-  button:active {
-    filter: brightness(0.95);
+  #core-art,
+  #palace-art {
+    transition: filter 1.2s ease-out;
   }
+  .water-flow,
+  .current-flow {
+    animation: flow 2s linear infinite;
+  }
+  #world[data-stage="2"] .steam-cloud,
+  #world[data-stage="3"] .steam-cloud,
+  #world[data-stage="4"] .steam-cloud,
+  #world[data-stage="5"] .steam-cloud {
+    animation: steam 4s ease-out infinite;
+  }
+  .steam-two {
+    animation-delay: 2s !important;
+  }
+  #task:not([hidden]) {
+    animation: task-in 0.2s ease-out;
+  }
+  button:not(:disabled):active {
+    filter: brightness(0.94);
+  }
+}
+#game[data-paused="true"] .water-flow,
+#game[data-paused="true"] .current-flow,
+#game[data-paused="true"] .steam-cloud {
+  animation-play-state: paused;
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+@keyframes steam {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.3);
+  }
+  30% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-65px) scale(1.7);
+  }
+}
+@keyframes task-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (forced-colors: active) {
+  button,
+  input,
+  .pipe-tile,
+  #task,
+  #dialogue {
+    border: 1px solid ButtonText;
+  }
+  .primary {
+    background: ButtonFace;
+    color: ButtonText;
+  }
+  .pipe-inner {
+    stroke: CanvasText;
+  }
+}
+#game[data-slow="true"] .water-flow,
+#game[data-slow="true"] .current-flow {
+  animation-duration: 8s;
+}
+#game[data-slow="true"] .steam-cloud {
+  animation-duration: 16s;
 }

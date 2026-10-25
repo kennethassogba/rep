@@ -1,21 +1,25 @@
 # REP
 
-Five short presidential missions around one Three.js machine: water pipes, reactor startup, Concorde takeoff, sniffer aircraft and the Élysée lights.
+A browser game with Giscard, de Gaulle and a power machine. Five missions, each with three phases: water circuits, reactor startup, Concorde, sniffer aircraft and the Élysée lights.
 
 [Play](https://rep.keff.uk/)
 
 ## Play
 
-Start the current mission. Giscard or de Gaulle gives the instruction and stays visible while you play. Finish the task to animate another part of the machine and unlock the next mission. Mistakes can be corrected immediately. Completed missions are saved locally.
+Turn the pipes to restore three circuits. Keep the reactor rods aligned through three power levels. Fly Concorde with throttle and pitch. Tune three survey signals. Synchronise three feeders to light the palace.
 
-The game fits one screen. English is the default; French, pause, quarter speed and restart are available. Every task uses native buttons or range inputs with keyboard support. Escape returns to the machine. The web manifest supports standalone portrait mode where available.
+The game fits one screen. English is the default; French, pause, quarter speed and restart are available. Buttons and native range inputs support keyboard and touch. Escape returns to the machine. Closing a mission keeps its current phase in memory; finished missions are saved locally.
 
 ## Code
 
-- `src/missions.ts`: mission order, bilingual dialogue and task success rules.
-- `src/mobile-scene.ts`: the continuous appliance, flowing water, turbine, aircraft and palace.
-- `src/main.ts`: tasks, input, progression, localization and storage.
-- `src/style.css`: single-screen responsive game layout.
+- `src/challenges.ts`: pure task state, puzzle generation, stability and timing rules.
+- `src/missions.ts`: mission order, bilingual dialogue and progression.
+- `src/machine.ts`: illustrated machine and registered animation layers.
+- `src/main.ts`: task UI, input, localization and storage.
+- `src/style.css`: dark single-screen layout and motion.
+- `public/art/`: transparent optimized machine and portrait assets.
+
+There is no WebGL or Three.js runtime dependency.
 
 ## Develop
 

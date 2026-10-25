@@ -6,12 +6,12 @@ export const missions = [
     title: ["Restore the water", "Remettre l'eau"],
     president: "degaulle",
     intro: [
-      "The Élysée is dark. Connect the pipes. Turn each bend.",
-      "L'Élysée est dans le noir. Reliez les tuyaux en tournant les coudes.",
+      "The Élysée is dark. Restore all three water circuits. Turn the pipes, then test the flow.",
+      "L'Élysée est dans le noir. Rétablissez les trois circuits. Tournez les tuyaux, puis testez l'eau.",
     ],
     done: [
-      "The Shadoks would be proud. Now, start the reactor.",
-      "Les Shadoks seraient fiers. Maintenant, le réacteur.",
+      "Je vous ai compris. Three circuits running. The Shadoks can take a break.",
+      "Je vous ai compris. Trois circuits en marche. Les Shadoks peuvent souffler.",
     ],
   },
   {
@@ -19,8 +19,8 @@ export const missions = [
     title: ["Start the reactor", "Lancer le réacteur"],
     president: "giscard",
     intro: [
-      "The Messmer Plan is waiting. Align the three rods with their marks.",
-      "Le plan Messmer attend. Alignez les trois barres sur leurs repères.",
+      "Vous n'avez pas le monopole du cœur. But you do have its controls. Keep all three rods on their marks through three power levels.",
+      "Vous n'avez pas le monopole du cœur. Mais vous avez les commandes. Maintenez les trois barres sur leurs repères pendant les trois paliers.",
     ],
     done: [
       "In France, we have ideas. And now, electricity.",
@@ -29,15 +29,15 @@ export const missions = [
   },
   {
     id: "concorde",
-    title: ["Clear Concorde for takeoff", "Faire décoller Concorde"],
-    president: "giscard",
+    title: ["Fly Concorde", "Piloter Concorde"],
+    president: "degaulle",
     intro: [
-      "Paris to New York. Keep the throttle in the marked zone for three seconds.",
-      "Paris-New York. Gardez la manette dans la zone pendant trois secondes.",
+      "Paris to Montréal. Throttle AND pitch. Hold both needles in their zones for takeoff, cruise and landing.",
+      "Paris-Montréal. Les gaz ET l'assiette. Gardez les deux aiguilles dans leurs zones : décollage, croisière, atterrissage.",
     ],
     done: [
-      "Mach 2. The luggage is still at Orly.",
-      "Mach 2. Les valises sont encore à Orly.",
+      "Vive le Québec libre ! Concorde has landed.",
+      "Vive le Québec libre ! Concorde a atterri.",
     ],
   },
   {
@@ -45,8 +45,8 @@ export const missions = [
     title: ["Test the sniffer aircraft", "Tester l'avion renifleur"],
     president: "degaulle",
     intro: [
-      "An aircraft that smells oil? Scan all three sites. I want to see the results.",
-      "Un avion qui sent le pétrole ? Scannez les trois sites. Je veux voir les résultats.",
+      "An aircraft that smells oil? Pick a site, tune the receiver and hold a clear signal. Three sites. No guesswork.",
+      "Un avion qui sent le pétrole ? Choisissez un site, réglez la fréquence et gardez un signal clair. Trois sites. Je veux des preuves.",
     ],
     done: [
       "A cow, a cheese, a dry hole. Send the invoice to Elf.",
@@ -58,12 +58,12 @@ export const missions = [
     title: ["Light up the Élysée", "Allumer l'Élysée"],
     president: "giscard",
     intro: [
-      "Dinner is in five minutes. Close the circuit when the needle crosses the mark.",
-      "Le dîner est dans cinq minutes. Fermez le circuit quand l'aiguille passe sur le repère.",
+      "Three feeders to connect. Close each switch on its striped mark. Miss, and the previous feeder trips.",
+      "Trois lignes à raccorder. Fermez chaque interrupteur sur le repère hachuré. Si vous ratez, la ligne précédente saute.",
     ],
     done: [
-      "The lights are on. You have the monopoly on the current.",
-      "Les lumières sont allumées. Vous avez le monopole du courant.",
+      "Au revoir. The Élysée has power. I can finally turn off the television.",
+      "Au revoir. L'Élysée a du courant. Je peux enfin éteindre la télévision.",
     ],
   },
 ] as const;
@@ -76,37 +76,6 @@ export function finishMission(p: Progress, id: MissionId) {
   p.playing = false;
   return true;
 }
-// L-shaped pipe segments: north/east, east/south, south/west, west/north.
-export const pipeEnds = (rotation: number) => [
-  rotation % 4,
-  (rotation + 1) % 4,
-];
-export function connectedPipes(rotations: readonly number[]) {
-  const expected = [
-    [2, 3],
-    [1, 2],
-    [0, 1],
-    [3, 0],
-  ];
-  return (
-    rotations.length === 4 &&
-    rotations.every((r, i) => expected[i].every((e) => pipeEnds(r).includes(e)))
-  );
-}
-export function alignedRods(values: readonly number[]) {
-  return (
-    values.length === 3 &&
-    values.every(
-      (v, i) => Number.isFinite(v) && Math.abs(v - [32, 68, 45][i]) <= 5,
-    )
-  );
-}
-export const inFlightZone = (v: number, time: number) =>
-  Math.abs(v - (58 + Math.sin(time * 0.65) * 20)) <= 10;
-export const syncNeedle = (time: number) => (Math.sin(time * 1.8) + 1) * 50;
-export const canConnect = (time: number) =>
-  Math.abs(syncNeedle(time) - 50) <= 15;
-
 export function frameDelta(now: number, previous: number) {
   return Math.max(0, Math.min(0.05, (now - previous) / 1000));
 }

@@ -1,145 +1,9 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-25T00:39:28.938165+00:00",
+  "generatedAt": "2026-10-25T01:06:55.120549+00:00",
   "title": "Design System: REP",
   "extensions": {
-    "colorMeta": {
-      "paper": {
-        "role": "neutral",
-        "displayName": "Paper",
-        "canonical": "#ffffff",
-        "tonalRamp": [
-          "oklch(15.00% 0.00000 0.00)",
-          "oklch(26.43% 0.00000 0.00)",
-          "oklch(37.86% 0.00000 0.00)",
-          "oklch(49.29% 0.00000 0.00)",
-          "oklch(60.71% 0.00000 0.00)",
-          "oklch(72.14% 0.00000 0.00)",
-          "oklch(83.57% 0.00000 0.00)",
-          "oklch(95.00% 0.00000 0.00)"
-        ]
-      },
-      "ink": {
-        "role": "neutral",
-        "displayName": "Ink",
-        "canonical": "#211c32",
-        "tonalRamp": [
-          "oklch(15.00% 0.04162 293.51)",
-          "oklch(26.43% 0.04162 293.51)",
-          "oklch(37.86% 0.04162 293.51)",
-          "oklch(49.29% 0.04162 293.51)",
-          "oklch(60.71% 0.04162 293.51)",
-          "oklch(72.14% 0.04162 293.51)",
-          "oklch(83.57% 0.04162 293.51)",
-          "oklch(95.00% 0.04162 293.51)"
-        ]
-      },
-      "cobalt": {
-        "role": "primary",
-        "displayName": "Cobalt",
-        "canonical": "#294cff",
-        "tonalRamp": [
-          "oklch(15.00% 0.26367 266.72)",
-          "oklch(26.43% 0.26367 266.72)",
-          "oklch(37.86% 0.26367 266.72)",
-          "oklch(49.29% 0.26367 266.72)",
-          "oklch(60.71% 0.26367 266.72)",
-          "oklch(72.14% 0.26367 266.72)",
-          "oklch(83.57% 0.26367 266.72)",
-          "oklch(95.00% 0.26367 266.72)"
-        ]
-      },
-      "water": {
-        "role": "primary",
-        "displayName": "Water",
-        "canonical": "#19c3ef",
-        "tonalRamp": [
-          "oklch(15.00% 0.13715 222.35)",
-          "oklch(26.43% 0.13715 222.35)",
-          "oklch(37.86% 0.13715 222.35)",
-          "oklch(49.29% 0.13715 222.35)",
-          "oklch(60.71% 0.13715 222.35)",
-          "oklch(72.14% 0.13715 222.35)",
-          "oklch(83.57% 0.13715 222.35)",
-          "oklch(95.00% 0.13715 222.35)"
-        ]
-      },
-      "heat": {
-        "role": "primary",
-        "displayName": "Heat",
-        "canonical": "#ff543c",
-        "tonalRamp": [
-          "oklch(15.00% 0.21100 31.01)",
-          "oklch(26.43% 0.21100 31.01)",
-          "oklch(37.86% 0.21100 31.01)",
-          "oklch(49.29% 0.21100 31.01)",
-          "oklch(60.71% 0.21100 31.01)",
-          "oklch(72.14% 0.21100 31.01)",
-          "oklch(83.57% 0.21100 31.01)",
-          "oklch(95.00% 0.21100 31.01)"
-        ]
-      },
-      "yellow": {
-        "role": "secondary",
-        "displayName": "Yellow",
-        "canonical": "#ffd52f",
-        "tonalRamp": [
-          "oklch(15.00% 0.17075 93.34)",
-          "oklch(26.43% 0.17075 93.34)",
-          "oklch(37.86% 0.17075 93.34)",
-          "oklch(49.29% 0.17075 93.34)",
-          "oklch(60.71% 0.17075 93.34)",
-          "oklch(72.14% 0.17075 93.34)",
-          "oklch(83.57% 0.17075 93.34)",
-          "oklch(95.00% 0.17075 93.34)"
-        ]
-      },
-      "pink": {
-        "role": "secondary",
-        "displayName": "Pink",
-        "canonical": "#ff80bc",
-        "tonalRamp": [
-          "oklch(15.00% 0.16693 352.15)",
-          "oklch(26.43% 0.16693 352.15)",
-          "oklch(37.86% 0.16693 352.15)",
-          "oklch(49.29% 0.16693 352.15)",
-          "oklch(60.71% 0.16693 352.15)",
-          "oklch(72.14% 0.16693 352.15)",
-          "oklch(83.57% 0.16693 352.15)",
-          "oklch(95.00% 0.16693 352.15)"
-        ]
-      },
-      "pressed": {
-        "role": "neutral",
-        "displayName": "Pressed",
-        "canonical": "#dce4ff",
-        "tonalRamp": [
-          "oklch(15.00% 0.03777 272.53)",
-          "oklch(26.43% 0.03777 272.53)",
-          "oklch(37.86% 0.03777 272.53)",
-          "oklch(49.29% 0.03777 272.53)",
-          "oklch(60.71% 0.03777 272.53)",
-          "oklch(72.14% 0.03777 272.53)",
-          "oklch(83.57% 0.03777 272.53)",
-          "oklch(95.00% 0.03777 272.53)"
-        ]
-      },
-      "hover": {
-        "role": "neutral",
-        "displayName": "Hover",
-        "canonical": "#edf0ff",
-        "tonalRamp": [
-          "oklch(15.00% 0.02036 276.96)",
-          "oklch(26.43% 0.02036 276.96)",
-          "oklch(37.86% 0.02036 276.96)",
-          "oklch(49.29% 0.02036 276.96)",
-          "oklch(60.71% 0.02036 276.96)",
-          "oklch(72.14% 0.02036 276.96)",
-          "oklch(83.57% 0.02036 276.96)",
-          "oklch(95.00% 0.02036 276.96)"
-        ]
-      }
-    },
+    "colorMeta": {},
     "typographyMeta": {
       "power": {
         "displayName": "Power",
@@ -193,7 +57,7 @@
   },
   "components": [],
   "narrative": {
-    "northStar": "One machine, five presidential missions",
-    "overview": "# REP design\n\nThe selected visual target is the first concept board: one blue cabinet with a yellow top and side, a red core porthole, a transverse turbine window, external clear water pipes and a lower yellow service hatch. A small wired \u00c9lys\u00e9e sits on top. The machine is continuous, not a stack of equipment models.\n\nWhite is shared by the page and Three.js canvas. Palette: ink #211c32, cobalt #294cff, red #ff543c, yellow #ffd52f and cyan #19c3ef. DM Sans is bundled locally. Toon-shaded procedural geometry and explicit dark edges carry the machine.\n\nThe header shows REP, five mission positions and language. The current objective is above the machine. One yellow action opens the task. Presidents occupy opposite lower margins; one persistent dialogue bubble identifies the active speaker. Task actions stay inside the task, never in dialogue. Completed tasks return to the machine with the president's response and the next mission action.\n\nTask surfaces use the same ink borders and physical colors. The water puzzle rotates four pipe bends. Reactor rods use three sliders with visible target lines. Concorde uses moving thrust alignment. Sniffer aircraft scan three sites. Grid connection uses a timed switch. Native controls provide keyboard and touch operation. No external runtime dependencies were added.\n\nAll views fit 320 x 568 and larger portrait viewports. Short landscape uses the left side for the task and the right side for dialogue. Safe-area insets protect top and bottom utilities. Pause disables task inputs and freezes task time. Reduced motion stops decorative aircraft, turbine and fluid motion; timing required by the actual games remains visible.\n"
+    "northStar": "The inked presidential machine",
+    "overview": "# REP design\n\nThe power machine follows the first approved concept board: a detailed inked blue-and-yellow appliance, red reactor porthole, transparent external pipes, service hatch and a limestone \u00c9lys\u00e9e with slate roofs. The machine is a transparent illustration with registered SVG animation layers, not a WebGL scene. The portraits follow the restrained bust caricatures in the same reference.\n\nThe page is midnight #0b1020. Task surfaces use #151d30, text #f3f1e9 and secondary text #b6bfd3. Yellow #ffd52f carries the current mission and primary action. Cyan #42d5ff carries water, adjustable inputs and stability progress. No green or lime. DM Sans is bundled locally.\n\nThe machine remains the dominant workspace between tasks. An active task covers its area while preserving the presidents, their dialogue, the five-mission progress and playback controls. Each mission has three phases. Task controls are outside dialogue. Instructions remain visible; errors replace the current instruction with a concrete recovery cue and a presidential response.\n\nThe machine's core brightens after startup, the turbines rotate, water moves through a registered pipe path and steam rises from the roof. The palace brightens when all three feeders connect. Pause stops both tasks and illustration motion; quarter speed slows both. Reduced motion stops decorative rotor, fluid and steam movement. Moving task targets are the games themselves and remain visible.\n\nThe layout fits a dynamic mobile viewport, with safe-area top and bottom insets. Compact portrait preserves task controls and full dialogue. Short landscape moves dialogue beside the task. Native buttons and ranges support touch and keyboard; focus transfers to the first task control after phase changes and back to the mission action after completion.\n"
   }
 }
